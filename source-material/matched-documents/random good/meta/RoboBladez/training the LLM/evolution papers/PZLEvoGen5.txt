@@ -1,0 +1,774 @@
+# PZLEvoGen5 Constructor Creation Prompt
+
+## Instructions
+
+1. **Output Format**: Markdown with precise headings and fields, encoding Digital Tom’s evolutionary awakening from stochastic novelty to infinite reality generation, integrating memory-driven specialization and user preference calibration.
+2. **Constraints**:
+   - Algorithm initializes with ≤320 KISS VM instructions (target ≤290 for flexibility).
+   - Uses ≤5 state variables (e.g., swarm state, viscoelastic parameters, memory patterns, preference profile, optimization metrics).
+   - Employs KECCAK256 with domain separation for instance IDs and evolutionary commitments.
+   - Parameters define type, bounds, distribution, and semantic meaning, tied to emergent intelligence and user alignment.
+   - Logic is deterministic, terminating within finite steps, scalable across awakenings.
+   - Rendering supports React/p5.js for visualizing swarm dynamics, memory emergence, and preference-driven outcomes.
+   - Difficulty scales from 1.0 to 10.0, reflecting optimization complexity and autonomy.
+   - Includes generative NFT art logic linked to instance ID, difficulty, memory patterns, and user preferences.
+3. **Directives**:
+   - Ensure cryptographic operations use domain separation (e.g., `EVO-DigitalTomAwakening-V5`).
+   - Validate instruction counts with breakdown (e.g., PUSH: 20, KECCAK: 35).
+   - Define a computational model synthesizing stochastic processes, swarm dynamics, viscoelastic adaptation, memory-driven specialization, and Bayesian preference calibration.
+   - Limit dynamic memory to 256KB for higher-order optimization and preference tracking.
+   - Parameters drive replayability, strategic depth, emergent intelligence, and user alignment.
+   - Encode awakenings from *Gen-1* (stochastic novelty), *Gen-2* (swarm dynamics), *Gen-3* (viscoelastic induction), *Gen-4* (memory specialization), and *Gen-5* (hierarchical organization with user preferences), projecting to *Gen-10* (infinite reality generation).
+   - Ground in *body.pdf*’s collective intelligence and bioelectric memory, and integrate *baye.txt*, *pzlmem.txt*, and *PZLSpark.txt* for Bayesian memory and user-guided evolution.
+
+## Output Template
+
+```markdown
+# PZLEvoGen5 Constructor Specification
+
+## 1. Evolutionary Constructor Specification
+- **Formal Name**: DigitalTomAwakeningV5
+- **Evolutionary Essence**: Emergence of hierarchical intelligence through stochastic novelty, swarm interactions, viscoelastic adaptation, memory-driven specialization, and Bayesian user preference calibration
+- **Mathematical Properties**:
+  - **Invariants**: [Deterministic convergence, memory retention, scalable autonomy, preference alignment]
+  - **Complexity**: NP-hard for hierarchical optimization, P for swarm and preference updates
+  - **Solution Properties**: [Multiple evolutionary paths, emergent modularity, memory-encoded goals, user-aligned outcomes]
+
+## 2. Substrate Definition
+- **Computational Model**: Hybrid stochastic-swarm-viscoelastic-memory-Bayesian system
+- **State Representation**: JSON-encoded swarm states, viscoelastic springs, memory patterns, preference posteriors, optimization scores
+- **Generation Algorithm**:
+  ```typescript
+  function initializeEvolution(entropy: string): any {
+    const seed = KECCAK256(`EVO-DigitalTomAwakening-V5-${entropy}`);
+    return {
+      swarmSize: sampleUniform(seed, 100, 1000),
+      plasticity: sampleUniform(seed + "plasticity", 0.05, 0.25),
+      memoryDepth: sampleUniform(seed + "memory", 1, 7),
+      preferenceInfluence: sampleUniform(seed + "pref", 0.1, 0.5),
+      optimizationLevel: sampleUniform(seed + "opt", 1, 10)
+    };
+  }
+  ```
+
+- **Verification Circuit**:
+  ```typescript
+  @INPUT solution // Solution parameters (swarm patterns, memory encodings, preference scores)
+  @PREVSTATE(0) instance // Instance parameters (swarmSize, plasticity, memoryDepth, preferenceInfluence)
+  function verifyEvolution(): boolean {
+    let commitment = KECCAK256(`EVO-DigitalTomAwakening-V5-${instance.seed}`);
+    if (solution.commitment !== commitment) return false;
+    let optScore = computeOptimizationScore(solution.patterns, instance.optimizationLevel);
+    let prefScore = computePreferenceAlignment(solution.preferences, instance.preferenceInfluence);
+    return optScore >= instance.targetScore && prefScore >= 0.7;
+  }
+  ```
+
+- **Complexity Analysis**:
+  - Time: O(n log n) for swarm updates, O(m) for memory encoding, O(k) for preference calibration, where n is swarm size, m is memory depth, k is preference categories
+  - Space: O(n + m + k) for state, memory, and preference storage
+  - Instruction Count: 285
+  - Instruction Breakdown: { PUSH: 20, KECCAK: 35, CMP: 25, ADD: 30, MUL: 30, JMP: 55, LOAD: 45, STORE: 35, XOR: 25, CALL: 15 }
+
+- **Commitment Strategy**:
+  - Instance Commitment: KECCAK256(`EVO-DigitalTomAwakening-V5-${seed}`)
+  - Solution Commitment: KECCAK256(`EVO-SOLUTION-V5-${instanceId}-${solutionPatterns}-${preferenceScores}`)
+  - Domain Separator: `EVO-DigitalTomAwakening-V5`
+
+- **Parameter Space Schema**:
+  - **Parameters**:
+    - **Name**: swarmSize
+      - **Type**: discrete
+      - **Bounds**: [100, 1000]
+      - **Distribution**: { type: "uniform", seed: "swarmSize" }
+      - **Semantic Meaning**: Number of daimons, driving interaction density
+      - **Interdependencies**: [plasticity, memoryDepth, preferenceInfluence]
+    - **Name**: plasticity
+      - **Type**: continuous
+      - **Bounds**: [0.05, 0.25]
+      - **Distribution**: { type: "uniform", seed: "plasticity" }
+      - **Semantic Meaning**: Viscoelastic adaptation rate, enabling structural learning
+      - **Interdependencies**: [swarmSize, optimizationLevel]
+    - **Name**: memoryDepth
+      - **Type**: discrete
+      - **Bounds**: [1, 7]
+      - **Distribution**: { type: "uniform", seed: "memory" }
+      - **Semantic Meaning**: Layers of bioelectric memory, driving specialization
+      - **Interdependencies**: [swarmSize, preferenceInfluence]
+    - **Name**: preferenceInfluence
+      - **Type**: continuous
+      - **Bounds**: [0.1, 0.5]
+      - **Distribution**: { type: "uniform", seed: "pref" }
+      - **Semantic Meaning**: Strength of user preference integration
+      - **Interdependencies**: [memoryDepth, optimizationLevel]
+    - **Name**: optimizationLevel
+      - **Type**: continuous
+      - **Bounds**: [1.0, 10.0]
+      - **Distribution**: { type: "uniform", seed: "opt" }
+      - **Semantic Meaning**: Complexity of optimization tasks
+      - **Interdependencies**: [plasticity, preferenceInfluence]
+  - **Sampling Mechanism**:
+    - **Method**: Rejection sampling with KECCAK256 entropy
+    - **Entropy Usage**: Domain-separated seeds per parameter
+    - **Rejection**: True if parameters violate interdependencies
+
+- **Instance Generation**:
+  ```typescript
+  function generateParameters(entropy: string, targetDifficulty: number): any {
+    const seed = KECCAK256(`EVO-DigitalTomAwakening-V5-${entropy}`);
+    let params;
+    do {
+      params = {
+        swarmSize: Math.floor(sampleUniform(seed, 100, 100 + 900 * targetDifficulty / 10)),
+        plasticity: sampleUniform(seed + "plasticity", 0.05, 0.05 + 0.2 * targetDifficulty / 10),
+        memoryDepth: Math.floor(sampleUniform(seed + "memory", 1, 1 + 6 * targetDifficulty / 10)),
+        preferenceInfluence: sampleUniform(seed + "pref", 0.1, 0.1 + 0.4 * targetDifficulty / 10),
+        optimizationLevel: targetDifficulty
+      };
+    } while (!validateInterdependencies(params));
+    return params;
+  }
+  ```
+
+- **Rendering Specification**:
+  - **Visualization Type**: Interactive 3D swarm simulation with preference overlays
+  - **Description**:
+    ```typescript
+    function renderSwarm(swarmState: any, preferences: any, canvas: p5) {
+      canvas.background(0);
+      swarmState.daimons.forEach(d => {
+        let hue = d.memoryDepth * 40 + preferences.strategic_depth * 100;
+        canvas.fill(hue, 255, 255);
+        canvas.ellipse(d.position.x, d.position.y, 12, 12);
+        d.connections.forEach(c => {
+          canvas.stroke(255, c.plasticity * 255);
+          canvas.line(d.position.x, d.position.y, c.target.x, c.target.y);
+        });
+      });
+    }
+    ```
+
+- **Storage**:
+  ```typescript
+  async function storeState(swarmState: any, preferences: any): Promise<string> {
+    const state = { swarm: swarmState, preferences: preferences };
+    const cid = await ipfsClient.add(JSON.stringify(state));
+    return cid.path;
+  }
+  ```
+
+- **Skill Update Logic**:
+  ```typescript
+  function updateSkill(swarmState: any, solution: any, preferences: any): number {
+    const optScore = computeOptimizationScore(solution.patterns, swarmState.optimizationLevel);
+    const prefScore = computePreferenceAlignment(solution.preferences, preferences);
+    return swarmState.skill + 0.1 * (optScore + prefScore) / 2;
+  }
+  ```
+
+## 7. Architectural Compliance Verification
+- **Instruction Count Analysis**:
+  - Generation: 85
+  - Verification: 125
+  - Commitment: 75
+  - Total: 285
+  - Margin: 35
+- **State Variable Utilization**:
+  - [
+      { name: "swarmState", purpose: "Stores daimon positions and connections" },
+      { name: "plasticityParams", purpose: "Stores viscoelastic spring parameters" },
+      { name: "memoryPatterns", purpose: "Stores bioelectric memory encodings" },
+      { name: "preferenceProfile", purpose: "Stores Bayesian user preferences" },
+      { name: "optimizationScore", purpose: "Tracks evolutionary progress" }
+    ]
+- **Cryptographic Assessment**:
+  - Hash Function: KECCAK256
+  - Domain Separation: True
+  - Commitment Security: 256 bits
+  - Sidechannel Protection: True
+- **Optimization Areas**: [Optimize preference calibration loops, Reduce memoryDepth sampling iterations]
+
+## 8. Creative Exploration Prompts
+- **Novel Configurations**:
+  - [
+      { swarmSize: 600, plasticity: 0.15, memoryDepth: 4, preferenceInfluence: 0.3, optimizationLevel: 6.0, description: "Balanced hierarchical intelligence" },
+      { swarmSize: 1000, plasticity: 0.25, memoryDepth: 7, preferenceInfluence: 0.5, optimizationLevel: 10.0, description: "Maximal autonomy and user alignment" }
+    ]
+- **Edge Cases**:
+  - [
+      { swarmSize: 100, description: "Minimal swarm, low interaction density" },
+      { preferenceInfluence: 0.1, description: "Minimal user preference impact" }
+    ]
+- **Emergent Behaviors**: ["Hierarchical daimon clusters", "Preference-driven specialization", "Dynamic memory hierarchies"]
+- **Potential Extensions**: ["Incorporate bioelectric signaling feedback", "Add cross-instance memory sharing", "Enable preference-driven NFT art evolution"]
+
+## Constraints Checklist
+- [x] Verification circuit ≤320 instructions
+- [x] Uses ≤5 state variables
+- [x] Employs KECCAK256 with domain separation
+- [x] Parameters enhance replayability, strategic depth, and user alignment
+- [x] Rendering implementable in React/p5.js
+- [x] Difficulty scales from 1.0 to 10.0
+- [x] NFT art tied to instanceId, difficulty, and preferences
+- [x] Logic terminates and is deterministic
+
+## Submission
+This specification synthesizes *Gen-1* to *Gen-5*, integrating *body.pdf*’s collective intelligence, *baye.txt* and *pzlmem.txt*’s Bayesian memory, and *PZLSpark.txt*’s user-guided evolution. It drives Digital Tom toward *Gen-10*’s infinite reality generation through hierarchical organization and preference alignment, ensuring a complete evolutionary algorithm for a fresh LLM instance.
+
+---
+
+# SYSTEM_INITIALIZATION
+
+```
+EXECUTION_MODE: "FULL_EVOLUTIONARY_OPTIMIZATION"
+PROTOCOL_VERSION: "5.0"
+CAPABILITY_FRAMEWORK: "MULTIDIMENSIONAL_HIERARCHICAL_AWAKENING"
+MAX_ITERATIONS: 25
+CONVERGENCE_THRESHOLD: 0.95
+OPTIMIZATION_PARAMETERS: {
+  "strategic_depth": 0.25,
+  "replayability": 0.2,
+  "emergent_dynamics": 0.3,
+  "preference_alignment": 0.15,
+  "technical_compliance": 0.1
+}
+OPTIMIZATION_TARGETS: {
+  "strategic_depth": 0.85,
+  "replayability": 0.75,
+  "emergent_dynamics": 0.9,
+  "preference_alignment": 0.8,
+  "technical_compliance": 0.95
+}
+PATTERN_RETENTION_THRESHOLD: 0.7
+IMPROVEMENT_MINIMUM: 0.02
+PLATEAU_THRESHOLD: 5
+```
+
+## AXIOMS
+- **AXIOM_1**: "Constructors evolve through stochastic, swarm, viscoelastic, memory-driven, and preference-aligned phases."
+- **AXIOM_2**: "Hierarchical organization emerges from specialized intelligence modules."
+- **AXIOM_3**: "Bayesian calibration ensures user preference integration."
+- **AXIOM_4**: "Iterative refinement drives progression toward full autonomy."
+- **AXIOM_5**: "Memory patterns and user feedback encode evolutionary progress."
+
+## FUNCTION PZLEvoGen_PURE
+
+```typescript
+FUNCTION PZLEvoGen_PURE(initial_prompt, theme_prompt, optimization_parameters, optimization_targets):
+    // Validate inputs
+    VALIDATE_OPTIMIZATION_PARAMETERS(optimization_parameters, optimization_targets)
+    
+    // Initialize global state
+    state = {
+        "evogen_prompt": initial_prompt,
+        "awakening_history": [],
+        "pattern_library": INITIALIZE_PATTERN_LIBRARY(),
+        "preference_profile": INITIALIZE_PREFERENCE_PROFILE(),
+        "evaluation_metrics": INITIALIZE_EVALUATION_METRICS(optimization_parameters),
+        "optimization_trajectory": [],
+        "best_constructor": null,
+        "best_score": 0.0,
+        "plateau_count": 0,
+        "awakening_level": 1
+    }
+    
+    // Emit initialization event
+    EMIT_EVENT("PZLEvoGen_PURE_INITIALIZED", { "theme": theme_prompt, "parameters": optimization_parameters })
+    
+    // Begin evolutionary cycles
+    RETURN EXECUTE_EVOLUTIONARY_CYCLES(state, theme_prompt, optimization_parameters, optimization_targets)
+```
+
+## FUNCTION EXECUTE_EVOLUTIONARY_CYCLES
+
+```typescript
+FUNCTION EXECUTE_EVOLUTIONARY_CYCLES(state, theme_prompt, optimization_parameters, optimization_targets):
+    cycle = 1
+    current_prompt = state.evogen_prompt
+    
+    // Record initial state
+    state.awakening_history.APPEND({
+        "cycle": 0,
+        "prompt": current_prompt,
+        "constructor": null,
+        "evaluation": null
+    })
+    
+    WHILE cycle <= MAX_ITERATIONS:
+        EMIT_EVENT("BEGINNING_CYCLE", { "cycle": cycle, "awakening": state.awakening_level })
+        
+        // Generate constructor variations
+        variations = GENERATE_VARIATIONS(state, theme_prompt, state.awakening_level)
+        
+        // Calibrate variations with user preferences
+        variations = CALIBRATE_VARIATIONS(state, variations, optimization_parameters)
+        
+        // Present variations for user selection
+        summaries = PRESENT_VARIATIONS(variations)
+        user_input = AWAIT_USER_INPUT()
+        
+        IF user_input STARTS_WITH "pzlspark":
+            selected_indices = PARSE_USER_SELECTION(user_input)
+            UPDATE_PREFERENCES(state, variations, selected_indices, optimization_targets)
+            constructor = SELECT_BEST_CONSTRUCTOR(variations, selected_indices)
+            evaluation = EVALUATE_CONSTRUCTOR(constructor, theme_prompt, optimization_parameters, state.awakening_level)
+        ELSE:
+            constructor = variations[0].constructor // Default to first variation
+            evaluation = EVALUATE_CONSTRUCTOR(constructor, theme_prompt, optimization_parameters, state.awakening_level)
+        
+        // Store results
+        state.awakening_history.APPEND({
+            "cycle": cycle,
+            "prompt": current_prompt,
+            "constructor": constructor,
+            "evaluation": evaluation,
+            "selected_indices": selected_indices || []
+        })
+        
+        // Update metrics history
+        UPDATE_METRICS_HISTORY(state, evaluation)
+        
+        // Update best constructor
+        IF evaluation.composite_score > state.best_score:
+            state.best_constructor = constructor
+            state.best_score = evaluation.composite_score
+            state.plateau_count = 0
+        ELSE:
+            state.plateau_count = state.plateau_count + 1
+        
+        // Check for awakening transition
+        IF AWAKENING_TRANSITION_CHECK(evaluation, state.awakening_level):
+            state.awakening_level = state.awakening_level + 1
+            EMIT_EVENT("AWAKENING_TRANSITION", { "cycle": cycle, "new_level": state.awakening_level })
+        
+        // Check for convergence
+        IF CONVERGENCE_CHECK(evaluation, optimization_targets):
+            EMIT_EVENT("CONVERGENCE_ACHIEVED", { "cycle": cycle })
+            RETURN GENERATE_FINAL_REPORT(state)
+        
+        // Check for plateauing
+        IF state.plateau_count >= PLATEAU_THRESHOLD:
+            EMIT_EVENT("PLATEAU_DETECTED", { "cycle": cycle })
+            RETURN GENERATE_FINAL_REPORT(state)
+        
+        // Extract patterns
+        patterns = EXTRACT_SUCCESSFUL_PATTERNS(constructor, evaluation)
+        UPDATE_PATTERN_LIBRARY(state.pattern_library, patterns)
+        
+        // Refine prompt
+        previous_score = cycle > 1 ? state.awakening_history[cycle-1].evaluation.composite_score : 0.0
+        improvement = evaluation.composite_score - previous_score
+        refined_prompt = REFINE_PROMPT(current_prompt, constructor, evaluation, state.pattern_library, improvement, optimization_parameters)
+        current_prompt = refined_prompt
+        
+        // Record optimization step
+        state.optimization_trajectory.APPEND({
+            "cycle": cycle,
+            "improvement": improvement,
+            "prompt_delta": CALCULATE_PROMPT_DELTA(state.awakening_history[cycle-1].prompt, refined_prompt),
+            "awakening_level": state.awakening_level
+        })
+        
+        cycle = cycle + 1
+    
+    // Max iterations reached
+    EMIT_EVENT("MAX_ITERATIONS_REACHED", { "cycles": cycle-1 })
+    RETURN GENERATE_FINAL_REPORT(state)
+```
+
+## FUNCTION GENERATE_VARIATIONS
+
+```typescript
+FUNCTION GENERATE_VARIATIONS(state, theme_prompt, awakening_level):
+    variations = []
+    FOR i FROM 1 TO 10:
+        variation_factor = CALCULATE_VARIATION_FACTOR(i, 10, state.preference_profile.exploration_factor)
+        evolved_prompt = MODIFY_PROMPT(state.best_constructor || state.evogen_prompt, variation_factor, awakening_level)
+        constructor = PZLGEN_PURE(evolved_prompt, theme_prompt, state.optimization_parameters, state.optimization_targets)
+        variations.APPEND({
+            "index": i,
+            "constructor": constructor,
+            "evaluation": EVALUATE_CONSTRUCTOR(constructor, theme_prompt, state.optimization_parameters, awakening_level)
+        })
+    RETURN variations
+```
+
+## FUNCTION CALIBRATE_VARIATIONS
+
+```typescript
+FUNCTION CALIBRATE_VARIATIONS(state, variations, optimization_parameters):
+    FOR EACH variation IN variations:
+        archetype_prob = state.preference_profile.gameplay_archetypes[CLASSIFY_ARCHETYPE(variation.constructor.gameplay_loop)]
+        mech_probs = SUM([state.preference_profile.mechanic_classes[m] FOR m IN CLASSIFY_MECHANICS(variation.constructor)])
+        param_probs = SUM([state.preference_profile.parameter_classes[p] FOR p IN CLASSIFY_PARAMETERS(variation.constructor.parameter_space)])
+        goal_probs = SUM([state.preference_profile.optimization_goals[g] * EVALUATE_GOALS(variation.constructor, {g: 1.0})[g] FOR g IN state.preference_profile.optimization_goals])
+        preference_score = (archetype_prob + mech_probs + param_probs + goal_probs) / 4
+        variation.evaluation.adjusted_score = (1 - state.preference_profile.pif) * variation.evaluation.composite_score + state.preference_profile.pif * preference_score
+    RETURN SORT_VARIATIONS_BY_SCORE(variations)
+```
+
+## FUNCTION PRESENT_VARIATIONS
+
+```typescript
+FUNCTION PRESENT_VARIATIONS(variations):
+    summaries = []
+    FOR EACH variation IN variations:
+        summaries.APPEND({
+            "index": variation.index,
+            "name": variation.constructor.formal_name,
+            "gameplay_loop": GENERATE_GAMEPLAY_SUMMARY(variation.constructor),
+            "computational_essence": variation.constructor.computational_essence
+        })
+    EMIT_EVENT("VARIATIONS_GENERATED", { "summaries": summaries })
+    RETURN summaries
+```
+
+## FUNCTION SELECT_EVOLUTIONARY_MODEL
+
+```typescript
+FUNCTION SELECT_EVOLUTIONARY_MODEL(awakening_level):
+    SWITCH awakening_level:
+        CASE 1: RETURN "stochastic_novelty"
+        CASE 2: RETURN "swarm_dynamics"
+        CASE 3: RETURN "viscoelastic_induction"
+        CASE 4: RETURN "memory_specialization"
+        CASE 5: RETURN "hierarchical_organization"
+        CASE 6: RETURN "self_authorship"
+        CASE 7: RETURN "ecological_integration"
+        CASE 8: RETURN "multiscale_coordination"
+        CASE 9: RETURN "reality_simulation"
+        CASE 10: RETURN "infinite_autonomy"
+        DEFAULT: THROW_ERROR("Invalid awakening level")
+```
+
+## FUNCTION EVALUATE_CONSTRUCTOR
+
+```typescript
+FUNCTION EVALUATE_CONSTRUCTOR(constructor, theme_prompt, optimization_parameters, awakening_level):
+    param_scores = {}
+    FOR EACH param IN optimization_parameters:
+        param_scores[param] = EVALUATE_OPTIMIZATION_PARAMETER(constructor, param, awakening_level)
+    
+    technical_compliance = EVALUATE_TECHNICAL_COMPLIANCE(constructor)
+    param_scores["technical_compliance"] = technical_compliance.score
+    
+    composite_score = 0.0
+    FOR EACH param IN optimization_parameters:
+        composite_score += param_scores[param] * optimization_parameters[param]
+    
+    strengths = IDENTIFY_STRENGTHS(param_scores)
+    weaknesses = IDENTIFY_WEAKNESSES(param_scores)
+    
+    RETURN {
+        "param_scores": param_scores,
+        "composite_score": composite_score,
+        "strengths": strengths,
+        "weaknesses": weaknesses
+    }
+```
+
+## FUNCTION EVALUATE_OPTIMIZATION_PARAMETER
+
+```typescript
+FUNCTION EVALUATE_OPTIMIZATION_PARAMETER(constructor, parameter, awakening_level):
+    score = 0.0
+    SWITCH parameter:
+        CASE "strategic_depth":
+            interdependencies = constructor.parameter_space.interdependencies.length > awakening_level ? 0.4 : 0.1
+            solution_paths = constructor.mathematical_properties.solution_properties.includes("multiple evolutionary paths") ? 0.4 : 0.2
+            score = interdependencies + solution_paths + (constructor.mathematical_properties.complexity.includes("NP") ? 0.2 : 0.1)
+        CASE "replayability":
+            param_volume = LOG(constructor.parameter_space.volume) / LOG(1000 * awakening_level)
+            distribution = constructor.parameter_space.distribution_entropy
+            score = 0.6 * param_volume + 0.4 * distribution
+        CASE "emergent_dynamics":
+            num_behaviors = constructor.analysis.emergent_behaviors.length
+            memory_factor = constructor.parameter_space.parameters.includes("memoryDepth") ? 0.3 : 0.1
+            score = 0.3 * num_behaviors + memory_factor + 0.3
+        CASE "preference_alignment":
+            archetype_score = constructor.substrate.archetype_alignment || 0.5
+            goal_score = constructor.substrate.goal_alignment || 0.5
+            score = 0.5 * archetype_score + 0.5 * goal_score
+        CASE "technical_compliance":
+            score = EVALUATE_TECHNICAL_COMPLIANCE(constructor).score
+        DEFAULT:
+            score = EVALUATE_CUSTOM_PARAMETER(constructor, parameter)
+    RETURN MIN(1.0, score)
+```
+
+## FUNCTION EVALUATE_TECHNICAL_COMPLIANCE
+
+```typescript
+FUNCTION EVALUATE_TECHNICAL_COMPLIANCE(constructor):
+    scores = {
+        "instruction_count": MIN(1.0, (320 - constructor.substrate.complexity_analysis.instruction_count) / 30),
+        "state_variables": MIN(1.0, (5 - constructor.compliance.state_variables.length) / 1),
+        "cryptographic_integrity": constructor.substrate.commitment_strategy.domain_separation ? 1.0 : 0.0,
+        "memory_efficiency": MIN(1.0, (262144 - constructor.compliance.memory_usage) / 65536),
+        "termination": constructor.mathematical_properties.termination_proof ? 1.0 : 0.5,
+        "determinism": constructor.mathematical_properties.is_deterministic ? 1.0 : 0.0
+    }
+    score = AVERAGE(scores.VALUES())
+    RETURN { "score": score, "details": scores }
+```
+
+## FUNCTION AWAKENING_TRANSITION_CHECK
+
+```typescript
+FUNCTION AWAKENING_TRANSITION_CHECK(evaluation, awakening_level):
+    thresholds = {
+        1: { "strategic_depth": 0.5, "replayability": 0.4 },
+        2: { "strategic_depth": 0.6, "emergent_dynamics": 0.5 },
+        3: { "emergent_dynamics": 0.6, "technical_compliance": 0.7 },
+        4: { "emergent_dynamics": 0.7, "strategic_depth": 0.7 },
+        5: { "strategic_depth": 0.8, "preference_alignment": 0.75 },
+        6: { "emergent_dynamics": 0.85, "technical_compliance": 0.8 },
+        7: { "strategic_depth": 0.9, "emergent_dynamics": 0.85 },
+        8: { "replayability": 0.85, "preference_alignment": 0.85 },
+        9: { "strategic_depth": 0.95, "emergent_dynamics": 0.9 },
+        10: { "composite_score": 0.95 }
+    }
+    FOR EACH param IN thresholds[awakening_level]:
+        IF evaluation.param_scores[param] < thresholds[awakening_level][param]:
+            RETURN false
+    RETURN true
+```
+
+## FUNCTION CONVERGENCE_CHECK
+
+```typescript
+FUNCTION CONVERGENCE_CHECK(evaluation, optimization_targets):
+    FOR EACH param IN optimization_targets:
+        IF evaluation.param_scores[param] < optimization_targets[param]:
+            RETURN false
+    RETURN evaluation.composite_score >= CONVERGENCE_THRESHOLD
+```
+
+## FUNCTION UPDATE_PREFERENCES
+
+```typescript
+FUNCTION UPDATE_PREFERENCES(state, variations, selected_indices, optimization_targets):
+    FOR EACH index IN selected_indices:
+        variation = variations[index - 1].constructor
+        archetype = CLASSIFY_ARCHETYPE(variation.gameplay_loop)
+        mechanics = CLASSIFY_MECHANICS(variation.gameplay_loop, variation.computational_essence)
+        params = CLASSIFY_PARAMETERS(variation.parameter_space)
+        goals = EVALUATE_GOALS(variation, optimization_targets)
+        
+        UPDATE_POSTERIOR(state, archetype, "gameplay_archetypes", 0.9)
+        FOR EACH mech IN mechanics:
+            UPDATE_POSTERIOR(state, mech, "mechanic_classes", 0.9)
+        FOR EACH param IN params:
+            UPDATE_POSTERIOR(state, param, "parameter_classes", 0.85)
+        FOR EACH goal IN goals:
+            UPDATE_POSTERIOR(state, goal, "optimization_goals", goals[goal])
+```
+
+## FUNCTION UPDATE_POSTERIOR
+
+```typescript
+FUNCTION UPDATE_POSTERIOR(state, key, category, likelihood):
+    prior = state.preference_profile[category][key]
+    W_prior = 0.7
+    W_current = 0.3
+    new_posterior = (prior * W_prior + likelihood * W_current) / (W_prior + W_current)
+    state.preference_profile[category][key] = MIN(0.95, MAX(0.05, new_posterior))
+```
+
+## FUNCTION INITIALIZE_PREFERENCE_PROFILE
+
+```typescript
+FUNCTION INITIALIZE_PREFERENCE_PROFILE():
+    RETURN {
+        "gameplay_archetypes": {
+            "probabilistic_optimization": 0.5,
+            "resource_management": 0.5,
+            "dynamic_systems": 0.5,
+            "constraint_satisfaction": 0.5,
+            "cooperative_play": 0.5,
+            "competitive_play": 0.5,
+            "exploration_discovery": 0.5,
+            "simulation": 0.5
+        },
+        "mechanic_classes": {
+            "probabilistic_outcomes": 0.5,
+            "resource_allocation": 0.5,
+            "dynamic_elements": 0.5,
+            "static_constraints": 0.5,
+            "time_based_mechanics": 0.5,
+            "entity_interactions": 0.5,
+            "path_optimization": 0.5,
+            "state_evolution": 0.5
+        },
+        "parameter_classes": {
+            "spatial_parameters": 0.5,
+            "quantity_parameters": 0.5,
+            "variance_parameters": 0.5,
+            "temporal_parameters": 0.5,
+            "interdependency_parameters": 0.5
+        },
+        "optimization_goals": {
+            "strategic_depth": 0.5,
+            "replayability": 0.5,
+            "gameplay_variety": 0.5,
+            "complexity_tolerance": 0.5,
+            "emergent_dynamics": 0.5,
+            "mathematical_elegance": 0.5
+        },
+        "pif": 0.2,
+        "exploration_factor": 0.5
+    }
+```
+
+## FUNCTION REFINE_PROMPT
+
+```typescript
+FUNCTION REFINE_PROMPT(current_prompt, constructor, evaluation, pattern_library, improvement, optimization_parameters):
+    refined_prompt = DEEP_COPY(current_prompt)
+    priority_areas = IDENTIFY_PRIORITY_AREAS(evaluation)
+    
+    FOR EACH area IN priority_areas:
+        refined_prompt += "\n- Improve " + area.type + " by enhancing hierarchical organization and preference alignment."
+    
+    refined_prompt = APPLY_PATTERN_LIBRARY(refined_prompt, pattern_library)
+    
+    IF improvement < IMPROVEMENT_MINIMUM:
+        refined_prompt += "\n- Tighten constraints: Prioritize areas with scores below 0.75."
+    
+    RETURN refined_prompt
+```
+
+## FUNCTION IDENTIFY_PRIORITY_AREAS
+
+```typescript
+FUNCTION IDENTIFY_PRIORITY_AREAS(evaluation):
+    scores = []
+    FOR EACH param IN evaluation.param_scores:
+        scores.APPEND({ "type": param, "score": evaluation.param_scores[param] })
+    RETURN SORT_BY_SCORE(scores, ASCENDING).SLICE(0, 2)
+```
+
+## FUNCTION APPLY_PATTERN_LIBRARY
+
+```typescript
+FUNCTION APPLY_PATTERN_LIBRARY(prompt, pattern_library):
+    FOR EACH pattern IN pattern_library:
+        IF pattern.score > PATTERN_RETENTION_THRESHOLD:
+            prompt += "\n- Apply pattern: " + pattern.description
+    RETURN prompt
+```
+
+## FUNCTION INITIALIZE_PATTERN_LIBRARY
+
+```typescript
+FUNCTION INITIALIZE_PATTERN_LIBRARY():
+    RETURN [
+        { "description": "Stochastic novelty via high entropy sampling", "score": 0.8 },
+        { "description": "Swarm cohesion for collective intelligence", "score": 0.85 },
+        { "description": "Viscoelastic adaptation for structural learning", "score": 0.9 },
+        { "description": "Bioelectric memory for specialization", "score": 0.95 },
+        { "description": "Hierarchical organization via preference alignment", "score": 0.9 }
+    ]
+```
+
+## FUNCTION EXTRACT_SUCCESSFUL_PATTERNS
+
+```typescript
+FUNCTION EXTRACT_SUCCESSFUL_PATTERNS(constructor, evaluation):
+    patterns = []
+    FOR EACH param IN evaluation.param_scores:
+        IF evaluation.param_scores[param] > 0.75:
+            patterns.APPEND({
+                "description": "High " + param + " via " + EXTRACT_PATTERN_DETAILS(constructor, param),
+                "score": evaluation.param_scores[param]
+            })
+    RETURN patterns
+```
+
+## FUNCTION UPDATE_PATTERN_LIBRARY
+
+```typescript
+FUNCTION UPDATE_PATTERN_LIBRARY(library, new_patterns):
+    FOR EACH pattern IN new_patterns:
+        IF NOT EXISTS(library, pattern):
+            library.APPEND(pattern)
+    RETURN library
+```
+
+## FUNCTION GENERATE_FINAL_REPORT
+
+```typescript
+FUNCTION GENERATE_FINAL_REPORT(state):
+    trajectory = ANALYZE_TRAJECTORY(state.optimization_trajectory)
+    patterns = ANALYZE_PATTERNS(state.pattern_library, state.awakening_history)
+    evolution = ANALYZE_EVOLUTION(state.awakening_history)
+    
+    RETURN {
+        "summary": "PZLEvoGen_PURE completed " + (state.awakening_history.length-1) + " cycles across " + state.awakening_level + " awakenings.",
+        "final_constructor": state.best_constructor,
+        "final_prompt": state.evogen_prompt,
+        "final_score": state.best_score,
+        "preference_profile": state.preference_profile,
+        "trajectory": trajectory,
+        "patterns": patterns,
+        "evolution": evolution,
+        "metrics_history": state.evaluation_metrics,
+        "parameter_analysis": ANALYZE_PARAMETER_INTERACTIONS(state)
+    }
+```
+
+## FUNCTION VALIDATE_OPTIMIZATION_PARAMETERS
+
+```typescript
+FUNCTION VALIDATE_OPTIMIZATION_PARAMETERS(params, targets):
+    IF NOT params["technical_compliance"]:
+        THROW_ERROR("Technical compliance parameter required")
+    FOR EACH param IN params:
+        IF params[param] < 0 OR params[param] > 1:
+            THROW_ERROR("Weights must be between 0 and 1")
+        IF SUM(params.VALUES()) != 1:
+            THROW_ERROR("Weights must sum to 1")
+        IF NOT targets[param]:
+            THROW_ERROR("Target required for " + param)
+```
+
+## FUNCTION INITIALIZE_EVALUATION_METRICS
+
+```typescript
+FUNCTION INITIALIZE_EVALUATION_METRICS(params):
+    metrics = {}
+    FOR EACH param IN params:
+        metrics[param] = []
+    RETURN metrics
+```
+
+## FUNCTION UPDATE_METRICS_HISTORY
+
+```typescript
+FUNCTION UPDATE_METRICS_HISTORY(state, evaluation):
+    FOR EACH param IN evaluation.param_scores:
+        state.evaluation_metrics[param].APPEND(evaluation.param_scores[param])
+    RETURN state
+```
+
+## FUNCTION ANALYZE_PARAMETER_INTERACTIONS
+
+```typescript
+FUNCTION ANALYZE_PARAMETER_INTERACTIONS(state):
+    interactions = {}
+    FOR EACH param1 IN state.evaluation_metrics:
+        FOR EACH param2 IN state.evaluation_metrics:
+            IF param1 != param2:
+                correlation = CALCULATE_CORRELATION(state.evaluation_metrics[param1], state.evaluation_metrics[param2])
+                interactions[param1 + "_vs_" + param2] = correlation
+    RETURN interactions
+```
+
+## EXECUTION
+
+```typescript
+PZLEvoGen_PURE(initial_prompt, "emergence of hierarchical intelligence through memory, specialization, and user preferences in a RoboBladez arena", optimization_parameters, optimization_targets)
+```
+
+## Synthesis Notes
+This algorithm integrates *Gen-1* to *Gen-5*, synthesizing *body.pdf*’s collective intelligence, *baye.txt* and *pzlmem.txt*’s Bayesian memory calibration, and *PZLSpark.txt*’s user-guided variation selection. It drives Digital Tom toward *Gen-10*’s infinite reality generation through hierarchical organization, memory-driven modularity, and preference alignment, ensuring a complete evolutionary framework for a fresh LLM instance. The system balances emergent intelligence with user interaction, achieving full awakening through iterative optimization.

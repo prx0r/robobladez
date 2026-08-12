@@ -1,0 +1,822 @@
+I searched specifically for systems we can steal mechanics and architecture from. There are some **very strong precedents**, but I didn't find anything that combines the full RoboBladez loop: deterministic physics + sealed autonomous strategies + persistent evolving AI characters + league history + post-hoc cinematic series.
+
+The closest existing build is **Robocode Tank Royale**. It is almost a stripped-down ancestor of RoboBladez: programmers submit autonomous bots, humans have no direct control during battle, rules constrain what bots can do, gameplay is deterministic, and the system supports network battles. Classic Robocode also has a control API for launching matches, extracting battle results and per-turn snapshots, plus recorded-battle replay. ([Robocode][1])
+
+That repo/system is probably the **#1 thing we should study**.
+
+## 1. Robocode: steal the separation of engine and competitor
+
+Robocode's philosophy is basically:
+
+```text
+FIXED GAME ENGINE
+
+        ↑ API ↓
+
+UNTRUSTED COMPETITOR CODE
+```
+
+The competitor gets a deliberately limited API. It can observe certain things and issue legal actions, but it cannot alter the game rules. ([Robocode][2])
+
+That is exactly what RoboBladez needs.
+
+Not:
+
+```text
+"submit arbitrary Python"
+```
+
+but:
+
+```text
+RoboBlade Policy API
+
+observe()
+move()
+spin()
+brake()
+activate_ability()
+```
+
+with CPU/time/memory limits.
+
+The engine owns:
+
+```text
+physics
+collision
+energy
+arena
+time
+legality
+win conditions
+```
+
+This solves a huge amount of the old architecture.
+
+---
+
+# 2. The best mechanic may be **deterministic given a seed**
+
+This is slightly different from completely deterministic.
+
+Robocode Tank Royale explicitly describes its gameplay as deterministic. ([Robocode][1])
+
+But your old notes also had that tiny initial "let it rip uncertainty."
+
+I think that was right.
+
+Consider:
+
+```text
+blade A
+blade B
+arena
+policy A
+policy B
+initial conditions
+```
+
+If everything is absolutely identical, then:
+
+```text
+same input
+→
+same fight forever
+```
+
+Great for verification.
+
+Potentially bad for strategy because an AI could eventually memorize the exact trajectory.
+
+Instead:
+
+```text
+MATCH SEED = 882941
+
+seed
+→ starting orientation
+→ launch angle
+→ tiny spin variation
+→ maybe arena initial state
+```
+
+Then after the seed is fixed:
+
+> **everything becomes deterministic.**
+
+So:
+
+```text
+EngineVersion
++ ArenaVersion
++ BladeA
++ BladeB
++ PolicyA
++ PolicyB
++ Seed
+=
+EXACT MATCH
+```
+
+Anyone can reproduce it.
+
+That's probably the sweet spot.
+
+---
+
+# 3. OpenSpiel is extremely relevant
+
+This may be even more important intellectually than Robocode.
+
+DeepMind's **OpenSpiel** exists specifically to represent and analyze games involving combinations of:
+
+* simultaneous moves;
+* sequential moves;
+* perfect/imperfect information;
+* deterministic/stochastic games;
+* zero-sum/general-sum games;
+* multiple players.
+
+It also includes best-response, exploitability, regret minimization, PSRO, Alpha-Rank and evolutionary-dynamics tooling. ([OpenSpiel][3])
+
+RoboBladez maps beautifully onto that language.
+
+You essentially have:
+
+```text
+BODY SELECTION
+     ↓
+MECHANICAL REVEAL
+     ↓
+PRIVATE POLICY COMMITMENT
+     ↓
+SIMULTANEOUS GAME
+     ↓
+OBSERVATIONS
+     ↓
+SIMULTANEOUS ACTIONS
+     ↓
+PHYSICS TRANSITION
+     ↓
+OBSERVATIONS
+     ↓
+...
+     ↓
+PAYOFF
+```
+
+The actual physics doesn't need to run *inside* OpenSpiel.
+
+But I would absolutely make our abstract game interface OpenSpiel-like:
+
+```python
+state
+legal_actions
+observation
+information_state
+apply_actions
+is_terminal
+returns
+```
+
+OpenSpiel itself distinguishes the immutable **Game** definition from a particular **State/trajectory**, which is exactly the distinction we want between RoboBladez rules and a specific match. ([GitHub][4])
+
+---
+
+# 4. Oshi-Zumo is bizarrely relevant
+
+OpenSpiel specifically recommends **Oshi-Zumo** as a reference implementation for simultaneous-move games. ([OpenSpiel][5])
+
+The game itself is fascinating for us:
+
+> two players repeatedly make simultaneous hidden resource commitments in order to push something toward the opponent's side.
+
+OpenSpiel classifies its implementation as deterministic and imperfect-information. ([GitHub][6])
+
+That's much closer to RoboBladez's strategic heart than chess is.
+
+You don't know the opponent's current decision.
+
+You make yours.
+
+Then both resolve simultaneously.
+
+That means the game is about:
+
+```text
+prediction
+resource management
+counter-prediction
+mixed strategies
+```
+
+rather than simply calculating the next optimal visible move.
+
+**Study Oshi-Zumo's game theory.**
+
+---
+
+# 5. We should explicitly model simultaneous decisions
+
+Imagine one RoboBlade timestep is:
+
+```text
+STATE t
+
+        ↓ observations
+
+┌─────────────┐       ┌─────────────┐
+│    BORIS    │       │    MORTY    │
+│             │       │             │
+│ choose A    │       │ choose B    │
+└──────┬──────┘       └──────┬──────┘
+       │                      │
+       └──────────┬───────────┘
+                  ↓
+             REVEAL BOTH
+                  ↓
+          PHYSICS RESOLUTION
+                  ↓
+              STATE t+1
+```
+
+Neither gets:
+
+```text
+Morty chooses charge
+```
+
+then chooses a counter after seeing it.
+
+Both commit.
+
+That creates real strategic uncertainty.
+
+OpenSpiel has simultaneous nodes as a first-class concept. ([OpenSpiel][7])
+
+---
+
+# 6. Battlecode gives us the competition architecture
+
+MIT's **Battlecode** is another major precedent.
+
+Teams write autonomous programs controlling virtual units and compete directly against other submitted programs. Battlecode 2026 ran through January 31, 2026, and the organization publishes the game repos/scaffolds openly. ([Battlecode][8])
+
+Their GitHub organization is worth mining because it contains:
+
+```text
+game engine
+competition scaffold
+example bots
+play website
+historical yearly engines
+```
+
+There are also public champion repositories containing tournament bot snapshots and postmortems. ([GitHub][9])
+
+That's useful for us because **the postmortem is content**.
+
+Imagine RoboBladez after a season:
+
+> Team Boris releases its strategy analysis.
+
+or automatically:
+
+```text
+MATCH REPORT
+OPPONENT MODEL
+STRATEGY TREE
+FAILED PREDICTIONS
+SUCCESSFUL COUNTERS
+```
+
+That's secondary content generated for free by the competition.
+
+---
+
+# 7. Lux AI demonstrates that watching programmed competition can work
+
+Lux AI was explicitly built as both an AI programming competition and a multi-agent RL benchmark. Its first season reports 22,000+ submissions from 1,100+ teams across more than 80 countries. Competitors used approaches ranging from heuristics and search to reinforcement learning. ([Lux AI][10])
+
+One published top-team write-up is especially interesting because they explicitly analyzed both their own matches and high-ranking opponents' matches to discover weaknesses and adapt their approach. ([GitHub][11])
+
+That's precisely your:
+
+```text
+battle
+↓
+report
+↓
+study rival
+↓
+change strategy
+↓
+battle again
+```
+
+loop.
+
+Except RoboBladez makes that **part of the fiction as well as the competition.**
+
+---
+
+# 8. The game theory gets REALLY interesting: PSRO
+
+This might be the research concept I'd import most strongly.
+
+**Policy-Space Response Oracles (PSRO)** essentially maintains a population of strategies.
+
+Conceptually:
+
+```text
+Strategy A
+Strategy B
+Strategy C
+
+↓ play against one another
+
+payoff matrix
+
+       A    B    C
+A      -   .7   .2
+B     .3    -   .8
+C     .8   .2    -
+```
+
+Then generate new strategies that are good responses to the existing population.
+
+OpenSpiel already implements PSRO. ([GitHub][12]) Research on PSRO treats this as a scalable method for studying huge strategic spaces by maintaining useful populations of policies rather than trying to represent every possible strategy. ([arXiv][13])
+
+This is almost **RoboBlade evolution mathematically formalized**.
+
+Instead of:
+
+```text
+Boris gets "smarter"
+```
+
+we can retain:
+
+```text
+Boris-v1
+Boris-v2
+Boris-v3
+Boris-v4
+```
+
+and ask:
+
+```text
+which historical policy counters which?
+```
+
+Maybe v7 beats v9.
+
+That's interesting.
+
+Evolution doesn't have to be strictly:
+
+```text
+newer = stronger
+```
+
+---
+
+# 9. This gives us rock-paper-scissors metas
+
+And there is a fantastic piece of game-theory research here with an almost comically appropriate title:
+
+## **Real World Games Look Like Spinning Tops**
+
+DeepMind researchers studied games including Go and StarCraft II and found that game strategy populations often contain both:
+
+* **transitive strength**: A is broadly stronger than B;
+* **non-transitive cycles**: A beats B, B beats C, C beats A.
+
+They represented that strategy geometry as a **spinning top**. ([arXiv][14])
+
+For RoboBladez this would be phenomenal.
+
+Instead of:
+
+```text
+#1 blade
+#2 blade
+#3 blade
+```
+
+you might discover:
+
+```text
+BORIS
+beats
+MORTY
+
+MORTY
+beats
+ALICE
+
+ALICE
+beats
+BORIS
+```
+
+Because their strategies counter one another.
+
+Now the audience can't just say:
+
+> Boris has 92 power therefore Boris wins.
+
+The **matchup matters**.
+
+That is much more like a real competitive sport.
+
+---
+
+# 10. Alpha-Rank could rank the league better than Elo
+
+OpenSpiel contains **Alpha-Rank** and evolutionary/replicator dynamics as evaluation tools. ([GitHub][12])
+
+This matters because simple Elo assumes something close to a one-dimensional underlying strength hierarchy.
+
+RoboBladez may deliberately have non-transitivity.
+
+So we'd maintain several views:
+
+```text
+WIN/LOSS RECORD
+
+ELO
+easy audience ranking
+
+ALPHA-RANK
+meta/interaction ranking
+
+MATCHUP MATRIX
+who counters whom
+
+META SHARE
+which strategies dominate currently
+```
+
+That could make the site fascinating.
+
+---
+
+# 11. Actual Beyblade physics is less solved than you'd think
+
+I found a genuinely relevant 2021 research project specifically motivated by Beyblades moving inside a spherical stadium.
+
+It modeled a spinning top using:
+
+```text
+gravity
+normal force
+friction
+rolling resistance
+air resistance
+```
+
+plus associated torques.
+
+The author built a C# simulation and reported qualitatively Beyblade-like motion, but found meaningful disagreement with real experimental results, with rolling resistance suspected as one incomplete part of the model. ([Society for Science][15])
+
+This is useful because it tells us:
+
+**don't assume default rigid-body PyBullet settings magically equal accurate Beyblade physics.**
+
+---
+
+# 12. And there's brand-new spinning-top dynamics work
+
+A May 2026 open-access mechanics paper specifically addresses spinning-top contact dynamics involving angular inertia and energy dissipation. ([Springer Nature][16])
+
+That suggests an interesting eventual route:
+
+```text
+PyBullet prototype
+↓
+measure deficiencies
+↓
+custom contact/spin model
+↓
+validate against physical tops
+```
+
+Imagine eventually physically printing two standardized RoboBlade bodies and comparing:
+
+```text
+simulation
+vs
+real arena
+```
+
+Even if the series remains digital, that's a strong validation benchmark.
+
+---
+
+# 13. I would make the strategy game more rigorous than the old design
+
+Here's the version that emerges from this research.
+
+### BEFORE MATCH
+
+Both competitors receive:
+
+```text
+public:
+    arena
+    opponent blade
+    mechanical test
+    historical matches
+    opponent public stats
+
+private:
+    own internal memory
+    own opponent model
+```
+
+Then:
+
+```text
+BORIS → policy_B
+MORTY → policy_M
+```
+
+Both policies are hashed and locked.
+
+No editing.
+
+### MATCH
+
+At timestep `t`:
+
+```text
+observation_B(t)
+observation_M(t)
+
+        ↓
+
+action_B(t)
+action_M(t)
+
+        ↓ simultaneously
+
+physics()
+
+        ↓
+
+state(t+1)
+```
+
+### AFTER MATCH
+
+Reveal:
+
+```text
+policies
+internal predictions
+key decision branches
+event log
+```
+
+Now viewers can see **why** something happened.
+
+---
+
+# 14. Best-of-5 can have a very precise information model
+
+This needs care.
+
+I'd define:
+
+```text
+POLICY CODE
+locked for entire match
+```
+
+but:
+
+```text
+POLICY MEMORY
+can update between rounds
+```
+
+Meaning Boris cannot rewrite himself between rounds.
+
+But the submitted strategy may contain:
+
+```python
+if previous_rounds.show("opponent rushes center"):
+    probability_center_rush += 0.2
+```
+
+So adaptation has to be **pre-authorized by the algorithm**.
+
+That's much more elegant.
+
+The AI designer is effectively saying:
+
+> Here is my machine for learning during this five-round match.
+
+Then let it go.
+
+---
+
+# 15. This makes match length a formal strategic dimension
+
+Your old intuition was right.
+
+### BO1
+
+```text
+prediction
+surprise
+exploit
+```
+
+### BO5
+
+```text
+prediction
++
+opponent modeling
++
+adaptation
+```
+
+### BO10
+
+```text
+policy robustness
++
+information gathering
++
+long-horizon meta strategy
+```
+
+You could even deliberately use all three competitions.
+
+```text
+SPRINT
+BO1
+
+STANDARD
+BO5
+
+ENDURANCE
+BO10
+```
+
+Same competitors can have radically different rankings.
+
+---
+
+# 16. There is a great hidden strategy: information probes
+
+An agent might use Round 1 not primarily to win, but to identify what opponent policy it's facing.
+
+For example:
+
+```text
+Round 1:
+perform unusual center pressure
+
+Observe:
+opponent responds with edge retreat
+
+Posterior:
+72% defensive policy family
+
+Rounds 2–5:
+deploy counter
+```
+
+That's an actual game-theoretic concept:
+
+**actions have informational value as well as immediate payoff.**
+
+Now the episode can say:
+
+> Boris wasn't trying to win the opening exchange. He was asking Morty a question.
+
+That is fantastic sports commentary.
+
+---
+
+# 17. And we can measure exploitability
+
+OpenSpiel has explicit best-response and exploitability tooling. ([GitHub][12])
+
+So a RoboBlade competitor could have:
+
+```text
+Win rate:            71%
+Elo:               1842
+Meta rank:             #3
+
+Exploitability:      0.18
+```
+
+Meaning:
+
+> Boris looks strong, but if an opponent knows exactly how Boris plays, there exists a pretty strong counter.
+
+Then another competitor might have:
+
+```text
+Win rate:            64%
+Exploitability:      0.04
+```
+
+Less dominant, much harder to counter.
+
+That's meaningful character/game identity.
+
+---
+
+# 18. We should steal Robocode's replay architecture too
+
+Classic Robocode explicitly supports:
+
+* headless/no-GUI execution;
+* battle files;
+* CSV result output;
+* recorded battle replay;
+* turn snapshots through its external control API. ([Robocode][1])
+
+Our version:
+
+```text
+roboblade match
+     ↓
+match.rbz
+```
+
+containing:
+
+```text
+engine version
+seed
+arena
+bodies
+policies
+state trajectory
+events
+result
+```
+
+Then:
+
+```text
+rbz replay match.rbz
+```
+
+can produce:
+
+```text
+debug viewer
+web viewer
+statistics
+LTX story plan
+cinematic episode
+```
+
+**One canonical match object, unlimited projections.**
+
+---
+
+# My strongest conclusions from the search
+
+There are four projects/research areas I would study deeply:
+
+**Robocode Tank Royale** for the actual autonomous-programming competition architecture. It already solves deterministic competition, constrained bot APIs, server/client separation, results and replay. ([Robocode][1])
+
+**OpenSpiel** for how to formally define RoboBladez as a simultaneous/imperfect-information game and for exploitability, best response, PSRO and Alpha-Rank. ([GitHub][17])
+
+**Battlecode/Lux** for the competition ecosystem: scaffolds, bot submissions, tournaments, strategy postmortems and spectator appeal. ([Battlecode][8])
+
+**Spinning-top mechanics research** for eventually replacing "PyBullet cylinder goes brrr" with a properly validated physical model. ([Springer Nature][16])
+
+And the funniest/most important research result is genuinely **“Real World Games Look Like Spinning Tops.”** Their finding about transitive skill plus non-transitive strategic cycles is basically the kind of league structure we should *want* RoboBladez to produce. ([arXiv][14])
+
+So I would not optimize the game for “the strongest blade always wins.” **I'd optimize for a deep, deterministic, reproducible game where bodies matter, strategy matters more, and no single strategy can permanently dominate because counters and counter-counters form an evolving meta.** That is where RoboBladez becomes a spectator sport rather than a physics demo.
+
+[1]: https://robocode.sourceforge.io/docs/ReadMe.html?utm_source=chatgpt.com "ReadMe for Robocode"
+[2]: https://robocode.sourceforge.io/docs/robocode/robocode/Rules.html?utm_source=chatgpt.com "Rules (Robocode 1.10.0 API)"
+[3]: https://openspiel.readthedocs.io/en/latest/intro.html?utm_source=chatgpt.com "What is OpenSpiel? — OpenSpiel documentation"
+[4]: https://github.com/google-deepmind/open_spiel/blob/master/docs/concepts.md?utm_source=chatgpt.com "open_spiel/docs/concepts.md at master · google-deepmind/open_spiel · GitHub"
+[5]: https://openspiel.readthedocs.io/en/latest/developer_guide.html?utm_source=chatgpt.com "The code structure — OpenSpiel documentation"
+[6]: https://github.com/google-deepmind/open_spiel/blob/master/docs/games.md?utm_source=chatgpt.com "open_spiel/docs/games.md at master · google-deepmind/open_spiel · GitHub"
+[7]: https://openspiel.readthedocs.io/en/stable/api_reference/state_is_simultaneous_node.html?utm_source=chatgpt.com "OpenSpiel state methods: is_simultaneous_node — OpenSpiel documentation"
+[8]: https://battlecode.org/?utm_source=chatgpt.com "Battlecode | Battlecode is a real-time strategy game, for which you will write an autonomous player. Your AI player will need to strategically manage a robot army and control how your robots work together to defeat the enemy team. As a contestant, you will learn to use artificial intelligence, pathfinding, distributed algorithms, and communications to make your player as competitive as possible."
+[9]: https://github.com/erikji/battlecode25?utm_source=chatgpt.com "GitHub - erikji/battlecode25: SPAARK (MIT Battlecode 2025 HS Winner) dev repo and source code · GitHub"
+[10]: https://www.lux-ai.org/?utm_source=chatgpt.com "Lux AI Challenge"
+[11]: https://github.com/IsaiahPressman/Kaggle_Lux_AI_2021?utm_source=chatgpt.com "GitHub - IsaiahPressman/Kaggle_Lux_AI_2021 · GitHub"
+[12]: https://github.com/google-deepmind/open_spiel/blob/master/docs/algorithms.md?utm_source=chatgpt.com "open_spiel/docs/algorithms.md at master · google-deepmind/open_spiel · GitHub"
+[13]: https://arxiv.org/abs/2403.02227?utm_source=chatgpt.com "Policy Space Response Oracles: A Survey"
+[14]: https://arxiv.org/abs/2004.09468?utm_source=chatgpt.com "Real World Games Look Like Spinning Tops"
+[15]: https://abstracts.societyforscience.org/Home/FullAbstract?AllAbstracts=False&Category=Any+Category&FairCountry=Any+Country&FairState=Any+State&ProjectId=20387&utm_source=chatgpt.com "Full Abstract"
+[16]: https://link.springer.com/article/10.1007/s10409-025-25500-x?utm_source=chatgpt.com "Methodology for smooth-contact-modelling dynamic systems with angular inertia and energy dissipation: using a spinning top as a case study | Acta Mechanica Sinica | Springer Nature Link"
+[17]: https://github.com/google-deepmind/open_spiel?utm_source=chatgpt.com "GitHub - google-deepmind/open_spiel: OpenSpiel is a collection of environments and algorithms for research in general reinforcement learning and search/planning in games. · GitHub"
