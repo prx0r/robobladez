@@ -1,0 +1,394 @@
+Yes. I checked the most recent push.
+
+Latest commit is **`173f4a7` — “Import RoboBladez source material”**, pushed after the initial commit.
+
+The repo right now is basically a **source-material dump / archaeology pass**, not yet the cleaned implementation. Root only has `README.md` and `source-material/`.
+
+What matters is that the imported material contains a newer, much more concrete MVP brainstorm that converges strongly with what we just worked out.
+
+### The strongest new material
+
+The `source-material/UK/robobladez.txt` file explicitly identifies the hard problems and already strips away a lot of the old noise:
+
+* **Don’t start with RL.** It proposes pattern/heuristic learning first, then imitation/RL, then meta-learning later.
+* **Measure elemental identity from actual playstyle**, e.g. Earth from patience/center control/efficiency, Water from adaptation/counters, Fire from initiative/aggression, Air from mobility/evasion, Aether from unpredictability/risk.
+* **Headless simulation first, cinematic replay later.**
+* **Persist every replay as structured state + events.**
+* **Detect signature moves from recurring successful patterns rather than preauthoring them.**
+* **Sandbox submitted strategies behind a constrained action validator.**
+* MVP action space is deliberately tiny.
+* Blade/strategy evolution becomes measurable rather than lore-first.
+
+That is a very good convergence.
+
+## The best idea in the push: daimons emerge from metrics
+
+This is stronger than the older version where we arbitrarily seed Boris as “Water.”
+
+The new material says, essentially:
+
+```text
+actual battle behavior
+        ↓
+measured traits
+        ↓
+element affinity
+        ↓
+persistent EMA over battles
+        ↓
+daimon identity
+```
+
+So if an agent repeatedly:
+
+* waits,
+* controls center,
+* conserves resources,
+
+it gradually becomes Earth-like.
+
+If it:
+
+* counters,
+* changes strategy,
+* reverses momentum,
+
+it becomes Water-like.
+
+That means the daimon becomes a **symbolic visualization of actual empirical strategy history**.
+
+That is excellent.
+
+I would go even further:
+
+```text
+DAIMON ≠ assigned class
+
+DAIMON =
+compressed phenotype
+of how this agent actually plays
+```
+
+Then the anime layer personifies it.
+
+That makes the fiction downstream of the game.
+
+## Signature moves should work the same way
+
+The push has a `SignatureDetector` concept that looks across successful decisive windows, encodes them, clusters them, and only declares a signature after a pattern repeatedly appears.
+
+That means:
+
+**Boris does not start with Slipstream.**
+
+He might develop behavior like:
+
+```text
+avoid early contact
+→ lure opponent inward
+→ rotate around center
+→ exploit overshoot
+→ counter at high relative velocity
+```
+
+After enough wins, the system detects:
+
+> Boris repeatedly wins using this sequence.
+
+Then the narrative engine names it:
+
+**Slipstream.**
+
+Then LTX gives it a canonical visual manifestation.
+
+That is much better than us inventing his special move first.
+
+You get:
+
+```text
+MECHANIC
+↓
+PATTERN
+↓
+SIGNATURE
+↓
+NAME
+↓
+LORE
+↓
+DAIMON VISUALIZATION
+```
+
+That should become a fundamental design law.
+
+## The imported source also validates the two-phase renderer
+
+The newer brainstorm literally proposes:
+
+```text
+PyBullet DIRECT
+↓
+record frames + events
+↓
+save replay JSON
+↓
+camera director
+↓
+commentary
+↓
+VFX
+↓
+cinematic render
+```
+
+with the replay as the single source of truth.
+
+So our updated version is simply:
+
+```text
+HEADLESS WORLD
+↓
+canonical replay
+↓
+event extraction
+↓
+story director
+↓
+LTX shot compiler
+↓
+episode
+```
+
+We don't need Babylon as the final cinematic renderer anymore.
+
+We may still want a lightweight deterministic replay viewer for the “sport” version.
+
+Then LTX handles the dramatized version.
+
+## Another big thing: fairness is finally explicit
+
+The imported MVP has a proper sandbox concept:
+
+```text
+policy gets observation
+↓
+policy returns action
+↓
+timeout
+↓
+validator checks legality
+↓
+action applied
+↓
+physics resolves
+```
+
+That's exactly what we wanted from Robocode/OpenSpiel.
+
+So I would lock this architecture:
+
+```text
+PLAYER POLICY
+cannot touch physics
+
+PLAYER POLICY
+cannot mutate arbitrary engine state
+
+PLAYER POLICY
+only emits Action
+```
+
+Allowed action schema might be something like:
+
+```text
+steer(angle, intensity)
+boost(intensity)
+brake(intensity)
+ability(id)
+```
+
+The simulator owns everything else.
+
+This is what makes “all strat” credible.
+
+## But there is one important contradiction we should resolve
+
+The new brainstorm says:
+
+> “Every battle, it learns.”
+
+That is good for **between-match evolution**.
+
+But our stronger game-theory mechanic says:
+
+> During a match, the submitted policy is locked.
+
+Those are compatible if we define:
+
+```text
+GENESIS
+player seed frozen
+
+BETWEEN MATCHES
+agent may evolve legally
+
+PRE-MATCH
+agent analyzes opponent
+
+COMMIT
+battle policy hash locked
+
+DURING MATCH
+code fixed
+internal state/memory may update
+
+POST-MATCH
+replay enters persistent history
+
+NEXT MATCH
+new policy version may be produced
+```
+
+That distinction needs to be canonical.
+
+Otherwise “learning” becomes fuzzy.
+
+## The repo also contains the old BattleStar Boris artifacts
+
+The recent import includes old battle-avatar files like `Battle Star Boris v10`, with the elaborate soul-transference / continuity / chaos-vector material.
+
+I would **preserve those as historical design material**, but not implement their literal architecture.
+
+They are valuable for:
+
+* character voice,
+* seed format inspiration,
+* lineage concept,
+* strategy personality,
+* lore generation.
+
+Not as the actual runtime model.
+
+Same with the old quantum modules.
+
+## I also noticed something very useful in the deep scan
+
+The imported source contains the exact old complete gameplay prompt where you distinguish:
+
+```text
+character
++
+daimon
++
+talisman
++
+battle avatar
+```
+
+and explicitly describe pre-match mechanical testing, opponent prediction, locked strategy submission and multi-round adaptation.
+
+That should probably become a **design-source document** in the repo rather than just buried under `source-material/deep-scan/...`.
+
+I'd eventually curate the repo to:
+
+```text
+/docs
+    VISION.md
+    GAMEPLAY.md
+    CANON.md
+    EVOLUTION.md
+    CINEMATIC.md
+    SOURCE-NOTES.md
+
+/core
+    physics/
+    policy/
+    replay/
+    events/
+    league/
+
+/domains
+    robobladez/
+
+/source-material
+    archive/
+```
+
+Right now the good signal is mixed with a huge amount of historical noise.
+
+## The actual build I see after this push
+
+I would define RoboBladez v0 around **nine pieces**:
+
+1. **BladeSpec**
+   Physical parameters only.
+
+2. **Agent**
+   Persistent identity/history.
+
+3. **Policy**
+   Constrained executable strategy.
+
+4. **Match**
+   Deterministic given seed + policy versions + body versions.
+
+5. **Replay**
+   Complete state/event history.
+
+6. **Analyzer**
+   Extracts playstyle, counters, turning points, signatures.
+
+7. **Evolution**
+   Updates persistent strategy state between matches.
+
+8. **Canon**
+   Records what permanently happened.
+
+9. **Director**
+   Converts canon/replay into script + LTX shots + episode.
+
+That's it.
+
+And I think the recent push adds one especially important principle we hadn't fully formalized:
+
+> **Character identity should be inferred from behavior wherever possible, not merely seeded into it.**
+
+Seed gives an initial bias.
+
+History gives the actual character.
+
+So Boris might begin almost blank:
+
+```text
+risk = .5
+exploration = .5
+patience = .5
+```
+
+After 70 battles:
+
+```text
+observed phenotype:
+
+counter-heavy
+late-game specialist
+high center control
+low initiation
+excellent adaptation
+```
+
+Then:
+
+```text
+water affinity = .61
+earth affinity = .27
+air affinity = .08
+fire affinity = .03
+aether affinity = .01
+```
+
+And *that* gives birth to Penelope.
+
+That is much more compelling than “we assigned him Water because water sounded cool.”
+
+The recent push is therefore not yet code we should preserve as implementation. It is a **very useful source corpus**, and the newest MVP brainstorm is probably the cleanest old artifact in the repo because it independently converges on the exact direction we arrived at: simple deterministic engine, constrained policies, measurable behavior, persistent replay, emergent identity, and cinematic reconstruction afterward.

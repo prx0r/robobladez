@@ -1,0 +1,816 @@
+Yes. The deeper I look, the more it seems **prehistoric wildlife is only one unusually good instance of a much larger opportunity**: domains where the internet already contains a half-built machine-readable world, but nobody has turned it into a simulation/content universe.
+
+I would prioritize domains using five criteria:
+
+**Data depth × interaction richness × visual richness × combinatorial content × defensibility.**
+
+## The strongest goldmines
+
+| Rank  | World                                             | Why it fits                                                                          |   My score |
+| ----- | ------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------: |
+| **1** | Living/extinct animals + ecosystems               | absurd amount of structured data; interactions are inherently simulatable            |  **10/10** |
+| **2** | Ancient worlds + mythology                        | places, artifacts, people, iconography, texts and myths already exist as linked data | **9.5/10** |
+| **3** | Deep sea                                          | bizarre entities, real environments, huge discovery factor, excellent APIs           | **9.3/10** |
+| **4** | Space / planetary systems                         | probably the most computationally exact simulation domain                            | **9.2/10** |
+| **5** | Evolution / Tree of Life                          | millions of entities and real relationships; enormous educational/game space         | **9.0/10** |
+| **6** | Natural Earth events                              | volcanoes, earthquakes, climate/environment interactions                             | **8.5/10** |
+| **7** | Archaeological objects / ancient material culture | enormous public-domain visual libraries + linked history                             | **8.4/10** |
+| **8** | Ancient trade / coins / movement                  | unexpectedly dense linked-open-data infrastructure                                   | **8.0/10** |
+
+And several of them can actually share the **same entity graph**.
+
+---
+
+# 1. The biggest goldmine: the entire Tree of Life
+
+This one is almost ridiculous.
+
+For living animals, we have vastly more structured information than prehistoric wildlife.
+
+**EOL TraitBank** aggregates traits, measurements and biological interactions from 50+ sources across roughly **1.7 million taxa and more than 11 million trait records**. ([Knowledge Graph Hub][1])
+
+Then you have:
+
+**GBIF**
+
+```text
+species
+occurrences
+locations
+specimens
+images
+```
+
+**GloBI**
+
+```text
+eats
+is_eaten_by
+pollinates
+parasite_of
+host_of
+interacts_with
+```
+
+GloBI explicitly exists to aggregate open species-interaction information such as predator–prey, pollinator–plant, parasite–host and pathogen–host relationships. ([Global Biotic Interactions][2])
+
+**Open Tree of Life**
+
+provides an API-accessible synthesized phylogenetic tree and taxonomy. ([PubMed Central (PMC)][3])
+
+Then image datasets are enormous. **BioTrove** alone contains about **161.9 million research-grade biodiversity images covering ~366,600 species**. ([arXiv][4])
+
+So our generic entity could become:
+
+```text
+Animal
+├── taxonomy
+├── phylogeny
+├── morphology
+├── traits
+├── habitat
+├── occurrences
+├── interactions
+├── predators
+├── prey
+├── environmental tolerances
+├── movement
+├── imagery
+└── literature
+```
+
+That is an extraordinary foundation.
+
+### Channels generated from this one world
+
+```text
+Animal Arena
+Deep Sea
+Tiny Worlds
+Predator Lab
+Spider World
+Snake World
+Bird Wars
+Extreme Adaptations
+Evolution Lab
+Ecosystem Simulator
+```
+
+Same backend.
+
+And the content doesn't need to be fighting.
+
+Imagine:
+
+> **What Happens If Wolves Disappear From This Ecosystem?**
+
+or:
+
+> **Can This Invasive Species Take Over the Island?**
+
+or:
+
+> **What Happens When We Double the Predator Population?**
+
+Those are genuinely simulations.
+
+---
+
+# 2. GloBI may be one of the most valuable APIs for us
+
+This is probably the source I hadn't appreciated enough earlier.
+
+Instead of manually inventing:
+
+```text
+lion → eats → zebra
+```
+
+GloBI gives structured biological interaction records.
+
+It already has a JavaScript API/library for querying which organisms eat or interact with others. ([GitHub][5])
+
+That means our world graph naturally becomes:
+
+```text
+                  leopard
+                    │
+                 preys_on
+                    │
+                    ▼
+                 antelope
+                    │
+                  eats
+                    │
+                    ▼
+                  plant
+```
+
+Now you can generate **real food webs**.
+
+And then simulate perturbations.
+
+That's a different channel:
+
+> **I Removed One Species From the Food Web**
+
+> **What If Jaguars Appeared Here?**
+
+> **Can This Ecosystem Survive 100 Years?**
+
+This is arguably a better simulator demo than animal combat because the relationships actually exist in scientific datasets.
+
+---
+
+# 3. Deep sea is almost purpose-built for AI content
+
+This is probably my favorite second channel.
+
+OBIS is a global open-access marine biodiversity system, and NOAA describes OBIS and GBIF as the world's leading open biodiversity databases, with OBIS specifically focused on marine life. ([NOAA Ocean Exploration][6])
+
+You also have the **World Register of Deep-Sea Species**, which is specifically trying to maintain a comprehensive known deep-sea species database and collect high-quality specimen imagery. ([World Register of Marine Species][7])
+
+Then NOAA's **World Ocean Database** gives environmental measurements; NOAA describes it as the world's largest uniformly formatted, quality-controlled public collection of ocean-profile data. ([NCEI][8])
+
+That gives us:
+
+```text
+DeepSeaCreature
++
+depth
++
+temperature
++
+oxygen
++
+salinity
++
+geography
++
+known interactions
+```
+
+Then run:
+
+> **What survives at 6,000 metres?**
+
+> **We moved this predator 2,000 metres deeper.**
+
+> **Which animal owns the abyss?**
+
+> **Build the perfect deep-sea ecosystem.**
+
+Visually, this could be insane.
+
+And scientifically there are actual environmental variables behind it.
+
+---
+
+# 4. Evolution itself could be a product
+
+Open Tree of Life is much more than a taxonomy lookup.
+
+Its purpose is essentially to synthesize published phylogenetic information into an accessible tree of life. ([Open Tree of Life][9])
+
+That means we can make:
+
+```text
+              ancestral node
+              /           \
+             /             \
+         species A       species B
+```
+
+a first-class content object.
+
+You could generate:
+
+### Evolutionary face-offs
+
+> How closely related are whales and hippos?
+
+### Trait evolution
+
+> When did venom appear?
+
+### Alternate evolution
+
+> What happens if environmental pressure X continues for 10,000 generations?
+
+Clearly label the last one as simulation, not prediction.
+
+### Evolution game
+
+```text
+environment changes
+       ↓
+traits have costs/benefits
+       ↓
+population changes
+       ↓
+lineage branches
+```
+
+So the same platform moves from:
+
+```text
+battle simulator
+```
+
+to:
+
+```text
+evolution simulator
+```
+
+without changing its fundamental entity/event architecture.
+
+---
+
+# 5. Ancient civilization is the historical jackpot
+
+There is an enormous amount of infrastructure scattered across digital humanities projects.
+
+### Pleiades
+
+Pleiades provides stable identifiers and a structured gazetteer of ancient places, particularly around the Greek and Roman worlds. ([Pelagios Network][10])
+
+### Pelagios
+
+Pelagios has spent years linking historical texts/maps/data to geographic entities and developed tooling such as Recogito for semantic geographic annotation. ([Pleiades][11])
+
+### OpenHistoricalMap
+
+There is also a collaborative historical world map whose underlying data can represent features through time rather than merely the present. ([Wikipedia][12])
+
+So the historical world could eventually contain:
+
+```text
+Place
+Person
+Culture
+Artifact
+Text
+Event
+Route
+Institution
+Settlement
+```
+
+all connected temporally.
+
+Imagine opening:
+
+```text
+ROME
+200 CE
+```
+
+and asking:
+
+> What exists?
+
+Then the graph determines which entities are temporally valid.
+
+That exact mechanism later works for:
+
+```text
+Varanasi — 900 CE
+Alexandria — 300 BCE
+Angkor — 1150 CE
+Kashmir — 1000 CE
+```
+
+This could become extremely powerful.
+
+---
+
+# 6. Classical mythology already has the graph we want
+
+This was a particularly interesting discovery.
+
+**Digital LIMC** is explicitly a **knowledge graph for classical mythology**.
+
+As reported in 2025, it contained roughly:
+
+* 3,000 mythological/historical figures
+* 56,000 objects
+* 40,500 images
+
+linked into a structured cultural-heritage dataset. ([Journal of Open Humanities Data][13])
+
+That's almost exactly our architecture:
+
+```text
+Zeus
+├── representations
+├── artifacts
+├── relationships
+├── associated myths
+├── places
+└── iconography
+```
+
+There are also efforts turning older mythology reference works into linked data; one FactGrid initiative discusses creating records for **15,000+ mythical entities** from Roscher's mythology lexicon. ([Factgrid Blog][14])
+
+So imagine:
+
+```text
+MYTHOLOGY WORLD ENGINE
+```
+
+where a creature isn't based on generic fantasy art.
+
+It has:
+
+```text
+source tradition
+date
+geographic region
+textual form
+iconographic form
+relationships
+attested attributes
+```
+
+Then you can ask:
+
+> **How did Medusa change over 800 years?**
+
+or:
+
+> **Which monsters does Heracles actually encounter in surviving sources?**
+
+or run clearly labeled counterfactual scenarios.
+
+This is exactly the kind of infrastructure I think would eventually be incredible for Indian traditions too—but we'd have to build much more of that dataset ourselves.
+
+---
+
+# 7. Museum APIs are an enormous asset goldmine
+
+This may solve a large part of historical visualization.
+
+The Met currently makes data and public-domain imagery accessible programmatically through its API. Its Open Access initiative covers **hundreds of thousands of public-domain images**, available for unrestricted reuse. ([Met Museum API][15])
+
+Rijksmuseum likewise exposes large-scale structured collection descriptions and image resources to developers. ([Rijksmuseum Data][16])
+
+And this isn't isolated—the Smithsonian and multiple major museums expose API/open-data surfaces. ([Nordic APIs][17])
+
+That means instead of asking an image model:
+
+> “what did a 2nd-century Roman helmet look like?”
+
+the system can first find:
+
+```text
+actual period objects
+actual sculptures
+actual pottery
+actual textile evidence
+```
+
+and build the reconstruction from those references.
+
+**That is how the historical-accuracy platform becomes defensible.**
+
+---
+
+# 8. There's already research validating the museum-graph architecture
+
+A 2025 system called **MUSEKG** builds a typed knowledge graph over museum collections connecting objects, people, organizations and textual/visual labels, specifically to improve grounded querying over cultural heritage. ([arXiv][18])
+
+And a July 2026 project called **VaseMuseum** goes further: multimodal AI + 2D/3D ancient artifacts + authoritative external knowledge retrieval + explicit handling of uncertain evidence. ([arXiv][19])
+
+That is eerily close to what we've been discussing.
+
+It strongly reinforces:
+
+```text
+SOURCE
+↓
+ENTITY GRAPH
+↓
+VISUAL ASSET
+↓
+GENERATIVE INTERFACE
+```
+
+instead of:
+
+```text
+prompt
+↓
+AI guesses history
+```
+
+---
+
+# 9. Space is probably the cleanest simulator domain
+
+This one has different advantages.
+
+NASA maintains huge structured databases, including the **NASA Exoplanet Archive**, whose current mission is to maintain published information on exoplanet systems and related stellar properties. ([NASA Exoplanet Archive][20])
+
+JPL's Small-Body Database exposes asteroid/comet properties, and NASA's open APIs expose near-Earth-object data. ([JPL Solar System Dynamics][21])
+
+Unlike extinct-animal fights, many space questions can be modeled from extremely mature physics.
+
+So:
+
+> **What Happens If Jupiter Moves 10% Closer to the Sun?**
+
+> **What If Earth Had Two Moons?**
+
+> **We Put Every Planet Around the Same Star**
+
+> **Can This Exoplanet Keep an Atmosphere?**
+
+The same generic pipeline becomes:
+
+```text
+PlanetAsset
++
+StarAsset
++
+InitialConditions
++
+Physics
+↓
+simulation
+↓
+events
+↓
+story
+↓
+cinematic visualization
+```
+
+The big advantage:
+
+**simulation fidelity can be dramatically higher.**
+
+The disadvantage:
+
+less character/personality than animals.
+
+---
+
+# 10. Natural Earth could be another excellent simulation channel
+
+The Smithsonian Global Volcanism Program maintains global volcano records, while USGS exposes machine-readable volcano status information and an extensive earthquake catalog. ([USGS Volcanoes][22])
+
+So the entity graph becomes:
+
+```text
+volcano
+fault
+city
+terrain
+historic eruption
+geology
+```
+
+Then:
+
+> Why does this volcano erupt differently from that one?
+
+> What happens if the wind changes?
+
+> Reconstructing historic eruptions.
+
+This one needs careful scientific modeling, but the structured-data foundation is excellent.
+
+---
+
+# 11. Coins sound boring until you see the data
+
+Ancient numismatics has surprisingly advanced linked-data infrastructure.
+
+**Nomisma.org** maintains a formal RDF ontology covering concepts such as coins, types and hoards. ([Deutsches Archäologisches Institut][23])
+
+Linked datasets already aggregate very large numbers of Greek and Roman coins and connect them to people, places, rulers, mints and hoards. ([Academia][24])
+
+That means coins can become sensors for history:
+
+```text
+coin
+→ mint
+→ ruler
+→ date
+→ findspot
+→ hoard
+→ trade route
+```
+
+Then content becomes:
+
+> **Follow One Coin Across the Roman World**
+
+> **How Far Did Alexander's Money Travel?**
+
+> **What 2,000 Coin Hoards Reveal About a Collapsing Empire**
+
+This isn't a simulator-first niche, but it uses the exact **graph → discovery → story → visualization** layer.
+
+---
+
+# The surprise winner: build one Biological World first
+
+I originally thought:
+
+```text
+prehistoric
+→ historical armies
+→ mythology
+```
+
+But after this research I would change the roadmap.
+
+I think the strongest first expansion is:
+
+```text
+                         LIFE GRAPH
+
+                         TAXONOMY
+                            │
+                      Open Tree of Life
+                            │
+                            ▼
+                          SPECIES
+                            │
+          ┌─────────────────┼─────────────────┐
+          ↓                 ↓                 ↓
+        traits          occurrences      interactions
+      TraitBank           GBIF/OBIS         GloBI
+          │                 │                 │
+          └─────────────────┼─────────────────┘
+                            ▼
+                         WORLD MODEL
+                            │
+                ┌───────────┼───────────┐
+                ▼           ▼           ▼
+             extinct      living      deep sea
+                            │
+                            ▼
+                       simulations
+```
+
+PBDB simply becomes the **deep-time extension of the universal Life Graph**.
+
+That is much better.
+
+Titanoboa and a modern python should ultimately be the same type of object:
+
+```text
+TaxonAsset
+```
+
+with different evidence availability.
+
+---
+
+# Then Historical World becomes World #2
+
+```text
+                       HISTORY GRAPH
+
+                         Wikidata
+                            +
+                         Pleiades
+                            +
+                         Pelagios
+                            +
+                  OpenHistoricalMap
+                            +
+                    museum collections
+                            +
+                       primary texts
+                            ↓
+                           ENTITY
+                            │
+          ┌─────────────────┼─────────────────┐
+          ↓                 ↓                 ↓
+        person            place             object
+          ↓                 ↓                 ↓
+         event            culture          iconography
+```
+
+And mythology can actually live **inside the historical world**, because an entity can have:
+
+```text
+ontological_type = mythic
+```
+
+while remaining historically situated as an attested cultural entity.
+
+That's much cleaner than creating a disconnected “mythology database.”
+
+---
+
+# The generic object gets interesting
+
+Instead of `AnimalAsset`, build:
+
+```text
+WorldEntity
+│
+├── identity
+├── types[]
+├── assertions[]
+├── sources[]
+├── relationships[]
+│
+├── temporal_extent
+├── spatial_extent
+│
+├── capabilities[]
+├── constraints[]
+├── environments[]
+│
+├── visual_reconstructions[]
+├── media_assets[]
+│
+├── simulation_models[]
+└── uncertainty[]
+```
+
+Then:
+
+```text
+Titanoboa
+Roman city
+Nāga
+exoplanet
+deep-sea squid
+volcano
+ancient coin
+```
+
+are all **WorldEntity** instances.
+
+Different domain plugins decide what can interact.
+
+---
+
+# The deepest goldmine may be cross-world content
+
+Once these world packs exist, you stop thinking in terms of channels.
+
+You can compute unusual intersections:
+
+```text
+BIOLOGY × HISTORY
+
+Which dangerous animals did Roman explorers encounter?
+```
+
+```text
+HISTORY × CLIMATE
+
+How did environmental change affect this settlement?
+```
+
+```text
+MYTH × ARCHAEOLOGY
+
+Where do representations of this creature first appear?
+```
+
+```text
+PALEONTOLOGY × EVOLUTION
+
+Why did this body plan disappear?
+```
+
+```text
+ASTRONOMY × SIMULATION
+
+What would Earth's sky look like in this planetary system?
+```
+
+The graph itself starts suggesting stories.
+
+---
+
+# The killer automated discovery loop
+
+Eventually I would have the engine continuously search its own worlds:
+
+```text
+ALL ENTITIES
+     ↓
+ALL RELATIONS
+     ↓
+ALL VALID SCENARIOS
+     ↓
+compute:
+  novelty
+  visuality
+  uncertainty
+  counterintuition
+  interaction strength
+  audience familiarity
+     ↓
+SIMULATE / INVESTIGATE
+     ↓
+rank results
+     ↓
+story proposals
+```
+
+Then instead of asking ChatGPT:
+
+> give me 20 video ideas
+
+you open:
+
+```text
+DISCOVERIES
+
+#1 ★★★★★
+Changing water depth reverses predator outcome.
+Evidence quality: 0.82
+Visual score: 0.94
+Novelty: 0.88
+
+#2 ★★★★★
+Two species overlap geographically but almost never
+temporally.
+Historical mystery score: 0.91
+
+#3 ★★★★☆
+Trait appears independently in five distant lineages.
+Evolutionary-interest score: 0.89
+```
+
+**The dataset generates the editorial calendar.**
+
+That is where I think the actual goldmine is.
+
+Prehistoric battles are an extremely good wedge because they force us to solve every hard primitive—entities, traits, uncertainty, arenas, interactions, simulation, persistent visuals and story compilation—while also producing immediately entertaining content. Once those primitives work, **Life Graph / Deep Sea should be the first reuse; Ancient World / Mythology should be the second; Space should be the third**. Those three expansions test biological, historical-symbolic and physical-simulation domains respectively, which would prove whether we've actually built a generic world-to-content engine rather than a dinosaur channel with fancy architecture.
+
+[1]: https://kghub.org/kg-registry/resource/eol-traitbank/eol-traitbank.html?utm_source=chatgpt.com "(EOL) TraitBank"
+[2]: https://globalbioticinteractions.org/about?utm_source=chatgpt.com "GloBI"
+[3]: https://pmc.ncbi.nlm.nih.gov/articles/PMC8513759/?utm_source=chatgpt.com "OpenTree: A Python Package for Accessing and Analyzing ..."
+[4]: https://arxiv.org/abs/2406.17720?utm_source=chatgpt.com "BioTrove: A Large Curated Image Dataset Enabling AI for Biodiversity"
+[5]: https://github.com/jhpoelen/eol-globi-data-js?utm_source=chatgpt.com "jhpoelen/eol-globi-data-js: Javascript API for accessing ..."
+[6]: https://oceanexplorer.noaa.gov/news/pathways-to-discovery/?utm_source=chatgpt.com "New Pathways to Discovery"
+[7]: https://www.marinespecies.org/deepsea/index.php?utm_source=chatgpt.com "World Register of Deep-Sea species"
+[8]: https://www.ncei.noaa.gov/products/world-ocean-database?utm_source=chatgpt.com "World Ocean Database"
+[9]: https://opentreeoflife.github.io/?utm_source=chatgpt.com "Open Tree of Life –"
+[10]: https://pelagios.org/lod/tools-resources?utm_source=chatgpt.com "Tools and Resources"
+[11]: https://pleiades.stoa.org/news/blog/pelagios?utm_source=chatgpt.com "Pelagios"
+[12]: https://en.wikipedia.org/wiki/OpenHistoricalMap?utm_source=chatgpt.com "OpenHistoricalMap"
+[13]: https://openhumanitiesdata.metajnl.com/articles/10.5334/johd.403?utm_source=chatgpt.com "Digital LIMC – A Knowledge Graph for Classical Mythology"
+[14]: https://blog.factgrid.de/archives/3454?utm_source=chatgpt.com "Roscher's Lexikon of Mythology as Linked Open Data - FactGrid"
+[15]: https://metmuseum.github.io/?utm_source=chatgpt.com "The Metropolitan Museum of Art Collection API: Latest Updates"
+[16]: https://data.rijksmuseum.nl/?utm_source=chatgpt.com "Rijksmuseum Data"
+[17]: https://nordicapis.com/how-museums-are-using-apis-to-inspire-art-lovers-worldwide/?utm_source=chatgpt.com "How Museums Are Using APIs to Inspire Art Lovers ..."
+[18]: https://arxiv.org/abs/2511.16014?utm_source=chatgpt.com "MUSEKG: A Knowledge Graph Over Museum Collections"
+[19]: https://arxiv.org/abs/2607.06374?utm_source=chatgpt.com "VaseMuseum: Digital Intelligent Museum for Ancient Greek Pottery"
+[20]: https://exoplanetarchive.ipac.caltech.edu/?utm_source=chatgpt.com "NASA Exoplanet Archive"
+[21]: https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html?utm_source=chatgpt.com "Small-Body Database Lookup - JPL Solar System Dynamics"
+[22]: https://volcanoes.usgs.gov/vsc/api/volcanoApi/?utm_source=chatgpt.com "USGS Volcano API"
+[23]: https://www.dainst.org/en/research/projects/nomismaorg-a-linked-data-approach-to-numismatics/2098?utm_source=chatgpt.com "Nomisma.org - a linked open data approach to numismatics"
+[24]: https://www.academia.edu/128796672/Numismatics_and_Linked_Open_Data?utm_source=chatgpt.com "(PDF) Numismatics and Linked Open Data"

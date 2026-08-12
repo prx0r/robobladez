@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RoboBladez</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #0a0e1a;
+    color: #cfd6ff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+  #game {
+    display: block;
+    width: 100vw; height: 100vh;
+    background: #0d1220;
+    cursor: crosshair;
+  }
+  #hud {
+    position: fixed; top: 12px; left: 12px;
+    font-size: 16px; letter-spacing: 1px;
+    text-shadow: 0 0 8px rgba(0,220,255,.6);
+    pointer-events: none;
+    z-index: 10;
+  }
+  #hud b { color: #ffd166; }
+  #overlay {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(6,8,16,.82);
+    z-index: 20; text-align: center;
+  }
+  #overlay h1 {
+    font-size: 64px; letter-spacing: 6px;
+    background: linear-gradient(90deg,#39ffc0,#4ad4ff,#ff6bff);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+  #overlay p { color: #8fa0cc; margin-bottom: 28px; max-width: 420px; }
+  #start {
+    padding: 14px 34px; font-size: 20px; letter-spacing: 2px;
+    color: #05121a; font-weight: 700;
+    background: linear-gradient(90deg,#39ffc0,#4ad4ff);
+    border: none; border-radius: 8px; cursor: pointer;
+    box-shadow: 0 0 24px rgba(74,212,255,.5);
+    transition: transform .1s;
+  }
+  #start:hover { transform: scale(1.06); }
+  #controls { margin-top: 22px; font-size: 13px; color: #5f6f9e; }
+</style>
+</head>
+<body>
+<div id="hud">SCORE <b id="score">0</b> &nbsp;|&nbsp; WAVE <b id="wave">1</b> &nbsp;|&nbsp; HP <b id="hp">100</b></div>
+<canvas id="game"></canvas>
+
+<div id="overlay">
+  <h1>ROBOBLADEZ</h1>
+  <p>Spin your blades and slice the incoming drones. Survive each wave. Collect cores to recharge.</p>
+  <button id="start">DEPLOY</button>
+  <div id="controls">WASD / Arrows — move &nbsp;•&nbsp; Mouse — aim blades &nbsp;•&nbsp; Space — dash</div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const hud = { score: document.getElementById('score'),
+              wave: document.getElementById('wave'),
+              hp: document.getElementById('hp') };
+
+let W = canvas.width = window.innerWidth;
+let H = canvas.height = window.innerHeight;
+window.addEventListener('resize', () => {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+});
+
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+const player = {
+  x: 0, y: 0, r: 18, speed: 260,
+  hp: 100, maxHp: 100, angle: 0, bladeLen: 46,
+  bladeAngle: 0, dash: 0, dashCd: 0
+};
+
+let mouseX = 0, mouseY = 0;
+canvas.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+
+let enemies = [];
+let cores = [];
+let particles = [];
+let score = 0;
+let wave = 0;
+let running = false;
+let spawnTimer = 0;
+let time = 0;
+
+function reset() {
+  player.x = W/2; player.y = H/2; player.hp = 100;
+  player.dash = 0; player.dashCd = 0;
+  enemies = []; cores = []; particles = [];
+  score = 0; wave = 0; spawnTimer = 0; time = 0;
+  hudUpdate();
+}
+
+function hudUpdate() {
+  hud.score.textContent = score;
+  hud.wave.textContent = wave;
+  hud.hp.textContent = Math.max(0, Math.round(player.hp));
+}
+
+function spawnEnemy() {
+  const speed = 80 + wave * 12 + Math.random() * 40;
+  const size = 14 + Math.random() * 8;
+  let x, y;
+  const side = Math.floor(Math.random() * 4);
+  if (side === 0) { x = Math.random()*W; y = -30; }
+  else if (side === 1) { x = Math.random()*W; y = H+30; }
+  else if (side === 2) { x = -30; y = Math.random()*H; }
+  else { x = W+30; y = Math.random()*H; }
+  enemies.push({ x, y, size, speed, wobble: Math.random()*Math.PI*2 });
+}
+
+function spawnCore() {
+  cores.push({ x: 20+Math.random()*(W-40), y: 20+Math.random()*(H-40) });
+}
+
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random()*Math.PI*2;
+    const sp = 40 + Math.random()*160;
+    particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
+      life: 0.5+Math.random()*0.5, maxLife: 1, color });
+  }
+}
+
+function dist(a, b) { return Math.hypot(a.x-b.x, a.y-b.y); }
+
+function update(dt) {
+  time += dt;
+  if (!running) return;
+
+  // movement
+  let dx = 0, dy = 0;
+  if (keys['w']||keys['arrowup']) dy = -1;
+  if (keys['s']||keys['arrowdown']) dy = 1;
+  if (keys['a']||keys['arrowleft']) dx = -1;
+  if (keys['d']||keys['arrowright']) dx = 1;
+  const m = Math.hypot(dx, dy) || 1;
+  player.x += (dx/m) * player.speed * dt;
+  player.y += (dy/m) * player.speed * dt;
+  player.x = Math.max(player.r, Math.min(W-player.r, player.x));
+  player.y = Math.max(player.r, Math.min(H-player.r, player.y));
+
+  // aim
+  player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+  player.bladeAngle += dt * (6 + player.speed/140);
+
+  // dash
+  player.dashCd = Math.max(0, player.dashCd - dt);
+  if ((keys[' '] || keys['shift']) && player.dashCd <= 0) {
+    player.dash = 0.18;
+    player.dashCd = 0.9;
+  }
+  if (player.dash > 0) {
+    player.dash -= dt;
+    player.x += Math.cos(player.angle) * 620 * dt;
+    player.y += Math.sin(player.angle) * 620 * dt;
+  }
+  player.x = Math.max(player.r, Math.min(W-player.r, player.x));
+  player.y = Math.max(player.r, Math.min(H-player.r, player.y));
+
+  // wave / spawn
+  if (enemies.length === 0 && spawnTimer <= 0) {
+    wave++;
+    for (let i = 0; i < 3 + wave*2; i++) spawnEnemy();
+    hud.wave.textContent = wave;
+  }
+  if (enemies.length > 0) {
+    spawnTimer = 1.2;
+  } else {
+    spawnTimer -= dt;
+  }
+
+  // blade hit zone (circle around player = bladeLen)
+  const bladeReach = player.bladeLen + 6;
+
+  for (let i = enemies.length-1; i >= 0; i--) {
+    const e = enemies[i];
+    e.wobble += dt*2;
+    const ang = Math.atan2(player.y - e.y, player.x - e.x);
+    e.x += Math.cos(ang) * e.speed * dt;
+    e.y += Math.sin(ang) * e.speed * dt + Math.sin(e.wobble)*20*dt;
+
+    // blade slice
+    if (dist(player, e) < bladeReach) {
+      e.hp = (e.hp||1) - 1;
+      if (e.hp <= 0) {
+        burst(e.x, e.y, '#4ad4ff', 14);
+        score += 10 + wave*2;
+        if (Math.random() < 0.25) spawnCore();
+        enemies.splice(i,1);
+        burst(player.x + Math.cos(player.angle)*player.bladeLen,
+              player.y + Math.sin(player.angle)*player.bladeLen, '#ff6bff', 6);
+      } else {
+        burst(e.x, e.y, '#8fa0cc', 5);
+      }
+    }
+
+    // hit player
+    if (dist(player, e) < player.r + e.size) {
+      player.hp -= 20 * dt * 8;
+      burst(player.x, player.y, '#ff5c5c', 6);
+    }
+  }
+
+  // cores
+  for (let i = cores.length-1; i >= 0; i--) {
+    const c = cores[i];
+    if (dist(player, c) < player.r + 14) {
+      player.hp = Math.min(player.maxHp, player.hp + 25);
+      burst(c.x, c.y, '#39ffc0', 12);
+      cores.splice(i,1);
+    }
+  }
+
+  // particles
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    p.vx *= 0.98; p.vy *= 0.98;
+    if (p.life <= 0) particles.splice(i,1);
+  }
+
+  if (player.hp <= 0) endGame();
+  hudUpdate();
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  // grid
+  ctx.strokeStyle = 'rgba(70,90,150,0.12)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // cores
+  for (const c of cores) {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 8 + Math.sin(time*6)*2, 0, Math.PI*2);
+    ctx.fillStyle = '#39ffc0'; ctx.shadowColor = '#39ffc0'; ctx.shadowBlur = 16;
+    ctx.fill(); ctx.shadowBlur = 0;
+  }
+
+  // enemies
+  for (const e of enemies) {
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.size, 0, Math.PI*2);
+    ctx.fillStyle = '#ff5c5c'; ctx.shadowColor = '#ff5c5c'; ctx.shadowBlur = 12;
+    ctx.fill(); ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.size-5, 0, Math.PI*2);
+    ctx.fillStyle = '#2a1018';
+    ctx.fill();
+  }
+
+  // particles
+  for (const p of particles) {
+    ctx.globalAlpha = Math.max(0, p.life/p.maxLife);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x-2, p.y-2, 4, 4);
+  }
+  ctx.globalAlpha = 1;
+
+  // player
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.rotate(player.angle);
+  // blades (spinning independently)
+  ctx.save();
+  ctx.rotate(player.bladeAngle);
+  ctx.strokeStyle = '#cfd6ff'; ctx.lineWidth = 4;
+  ctx.shadowColor = '#4ad4ff'; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(player.bladeLen,0);
+  ctx.moveTo(0,0); ctx.lineTo(-player.bladeLen,0);
+  ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#4ad4ff';
+  ctx.beginPath(); ctx.arc(player.bladeLen,0,3,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-player.bladeLen,0,3,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  // body
+  ctx.fillStyle = '#232c4d'; ctx.strokeStyle = '#4ad4ff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, player.r, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+  // eye
+  ctx.fillStyle = '#39ffc0'; ctx.shadowColor = '#39ffc0'; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.arc(player.r*0.35, 0, 4, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // hp bar
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.fillRect(0, H-18, W, 6);
+  ctx.fillStyle = player.hp > 30 ? '#39ffc0' : '#ff5c5c';
+  ctx.fillRect(0, H-18, W*(Math.max(0,player.hp)/100), 6);
+}
+
+function endGame() {
+  running = false;
+  const o = document.getElementById('overlay');
+  o.querySelector('h1').textContent = 'ROBOTS DOWN';
+  o.querySelector('p').innerHTML = `Wave ${wave} &nbsp;•&nbsp; Final Score <b style="color:#ffd166">${score}</b>`;
+  o.style.display = 'flex';
+}
+
+document.getElementById('start').addEventListener('click', () => {
+  reset();
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('overlay').querySelector('h1').textContent = 'ROBOBLADEZ';
+  running = true;
+});
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+reset();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
