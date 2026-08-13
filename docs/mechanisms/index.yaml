@@ -258,5 +258,13 @@ Status enum:
 
 - id: SHOT_GRAPH
   status: IMPLEMENTED
-  implementation: src/robobladez/shots.py
+  implementation: src/robobladez/shots.py, src/robobladez/media.py
   canonical_status: [NARRATIVE]
+  notes: emits schema-valid ShotSpecs; renderer-agnostic (LTX-2.3 replaceable)
+
+- id: RENDERER_AGNOSTIC_PIPELINE
+  status: IMPLEMENTED
+  implementation: src/robobladez/media.py
+  canonical_status: [INFRA, NARRATIVE]
+  notes: ShotSpec/RenderRequest/RenderJob/RenderArtifact/QAVerdict; control hierarchy
+  references: docs/ltx/integration/RENDERER-AGNOSTIC-ARCHITECTURE.md

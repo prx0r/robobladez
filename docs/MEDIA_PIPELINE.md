@@ -1,71 +1,53 @@
-# Media Pipeline
+# Media Pipeline (rmdev Phase 13)
 
-## Canonical principle
+LTX / video generation is **downstream of canonical simulation** and **replaceable**.
 
-The simulation is ugly and authoritative.
-The episode is beautiful and subordinate.
-
-```text
-MatchResult
-  ↓
-Replay
-  ↓
-Event importance
-  ↓
-Story beats
-  ↓
-Shot specs
-  ↓
-LTX / ComfyUI
-  ↓
-episode
+```
+MATCH REPLAY
+  → EVENT SELECTION
+  → SHOT SPEC
+  → CONTROL ASSETS
+  → LTX (2.3 today, 2.5 later, or any renderer)
+  → VISION/LOGIC QA
+  → EPISODE
 ```
 
-## What LTX receives
+## Canonical software objects (`src/robobladez/media.py`)
 
-Each shot should contain:
+| Object | Role |
+|---|---|
+| `ShotSpec` | canonical, schema-valid shot (see `docs/ltx/templates/shot-spec.schema.json`) |
+| `RenderRequest` | asks a backend to render a ShotSpec (family/version/profile) |
+| `RenderJob` | a tracked render (queued/running/done/failed) |
+| `RenderArtifact` | the returned clip (uri + digest) |
+| `QAVerdict` | pass/fail with canonicality checks |
 
-```text
-subjects
-canonical visual versions
-arena
-start state
-end state
-action
-camera
-duration
-continuity constraints
-```
+The world/game emits `ShotSpec` and consumes `RenderArtifact` — it never parses
+model-specific workflow JSON. Backends map ShotSpec → LTX API / ComfyUI / local / future-2.5.
 
-The MVP emits compact shot JSON.
+## Control hierarchy (least-generative route that solves the shot)
 
-## Identity continuity
+Loose → constrained: T2V → I2V → FIRST_LAST → KEYFRAME → ICLORA → RETAKE → EXTEND.
 
-Later maintain a `SeriesBible` containing:
+| Shot class | Control mode |
+|---|---|
+| establish_arena | T2V |
+| competitor_intro | I2V |
+| battle_event | KEYFRAME |
+| daimon_manifestation | I2V |
+| replay_analysis | ICLORA |
+| round_result | RETAKE |
 
-- competitor appearance
-- blade appearance
-- daimon manifestation
-- recurring arena grammar
-- signature-move visualization
-- camera grammar
-- musical motifs
-- previous episode summaries
+If a shot encodes a canonical event, increase control as event specificity increases.
+Prompting should not carry constraints that a reference/control signal can express.
 
-## QA
+## LTX version status
 
-Generated clips should be rejected if they:
+Official line is **LTX-2.3** (`ltx-2-3-fast`, `ltx-2-3-pro`). LTX-2.5 is not an official
+released target as of 2026-08-13; see `docs/ltx/11-LTX-2.5-WATCHLIST.md`. The renderer
+abstraction allows a 2.5 backend swap without touching RoboBladez.
 
-- swap competitor identity
-- reverse the result
-- show impossible event order
-- contradict the canonical arena/state
-- invent a decisive event
+## Reference pack
 
-The same replay can generate many projections:
-
-- raw/debug viewer
-- sports replay
-- short clip
-- anime episode
-- commentary breakdown
+Full research (feature matrix, prompting, ComfyUI, LoRA/IC-LoRA training, hardware,
+audio, provenance) lives in `docs/ltx/` (imported from the LTX production pack).
