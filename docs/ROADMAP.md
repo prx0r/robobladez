@@ -7,11 +7,15 @@ Phase status per the canonical dev guide (`uploads/rmdev`) and subsequent review
 - CONSTITUTION, GAMEPLAY, PHYSICS_SCOPE docs; versioned MatchResult; replay digest.
 - 29 mechanism specs in `docs/mechanisms/` + implementation index `docs/mechanisms/index.yaml`.
 
-## Phase 1 — Make the game strategic — PARTIAL
-- 12 policy archetypes + 8 body archetypes (`zoo.py`) — but the battle path now uses
-  **reincarnations**, not zoo picks.
-- `scripts/run_matrix.py` + `meta.py` (non-transitivity / dominance / seed sensitivity).
-- **NEXT**: run the 100k+ matchup experiment and tune until counters emerge (non-transitive meta).
+## Phase 1 — Make the game strategic — IN PROGRESS
+- Reincarnation strategy audit (`robobladez audit-reincarnations`) — 6 author
+  archetypes (pressure/orbit/bait/counter/endure/adaptive) × bodies, seeded.
+- **Honest current result (seeds=5, 3 bodies): 73% decisive, but NO non-transitive
+  cycles; `pressure` dominates and `adaptive` loses to everyone.** The game is
+  not yet strategically balanced — this is the active tuning work, not theatre.
+- **NEXT**: balance the author archetypes until counters emerge (A>B, B>C, C>A).
+  Priority: fix `adaptive` (loses everything) and weaken `pressure` dominance.
+  Then scale seeds/audit to 100–1000 and confirm a non-transitive meta.
 
 ## Phase 2 — Mechanical baseline — DONE
 - `mechanical.py` → `MechanicalMatchupReport`; wired into the battle protocol.

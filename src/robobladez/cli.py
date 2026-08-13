@@ -75,6 +75,11 @@ def main():
     mv.add_argument("--no-render", action="store_true")
     mx = sp.add_parser("matrix", help="legacy policy-zoo matchup matrix analysis")
     mx.add_argument("--tsv", default="matrix.tsv")
+    ra = sp.add_parser("audit-reincarnations",
+                       help="strategy audit: decisive rate + non-transitivity over profiles x bodies")
+    ra.add_argument("--seeds", type=int, default=30)
+    ra.add_argument("--rounds", type=int, default=3)
+    ra.add_argument("--bodies", nargs="*", default=["balanced", "heavy", "light"])
     x = p.parse_args()
     if x.cmd == "demo":
         print(json.dumps(run_demo(x.out), indent=2))
@@ -101,6 +106,10 @@ def main():
     elif x.cmd == "matrix":
         from . import meta
         print(json.dumps(meta.analyze(x.tsv), indent=2))
+    elif x.cmd == "audit-reincarnations":
+        from .reincarnation_audit import audit_reincarnations
+        r = audit_reincarnations(seeds=x.seeds, rounds=x.rounds, bodies=tuple(x.bodies))
+        print(json.dumps(r, indent=2))
     else:
         print(json.dumps(_battle(x.out), indent=2))
 

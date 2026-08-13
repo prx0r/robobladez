@@ -29,7 +29,9 @@ python -m unittest discover -s tests -v            # 67 fast tests
 |---|---|
 | `src/robobladez/engine.py` `physics.py` `model.py` | deterministic match kernel |
 | `src/robobladez/reincarnation/` | RBZ-RC-1 compiler/interpreter (schema/validate/normalize/runtime/lineage) |
-| `src/robobladez/reincarnation_author.py` | `ReincarnationContext` + `BaselineReincarnationAuthor` |
+| `src/robobladez/reincarnation_author.py` | `ReincarnationContext` + `BaselineReincarnationAuthor` (6 strategy profiles) |
+| `src/robobladez/llm_author.py` | `LLMReincarnationAuthor` — hermes (deepseek-v4-flash) authors RBZ-RC-1, falls back to baseline |
+| `src/robobladez/reincarnation_audit.py` | strategy audit: decisive rate + non-transitivity (`audit-reincarnations`) |
 | `src/robobladez/battle.py` | two-phase battle protocol (mechanical reveal → sealed → best-of-N) |
 | `src/robobladez/competition.py` | `CompetitionEntry`, `EntrySnapshot`, `MatchExecutionManifest` |
 | `src/robobladez/challenge.py` | MatchChallenge + seed commit/reveal |
@@ -106,8 +108,10 @@ Public entrant SDK, website, spectator frontend, PSRO, Alpha-Rank, 100 bodies,
 - `docs/MVP.md` — the one vertical slice (what "working" means)
 - `docs/ROADMAP.md` — phase status
 - `docs/CONSTITUTION.md` — hard contract (incl. visual-asset rules)
-- `docs/MEDIA_PIPELINE.md`, `docs/MEDIA_STRATEGY.md`, `docs/VISUAL_ASSETS.md` — media layer
+- `docs/COMBAT_ENGINE.md` — combat engine state + physics-simulation-quality ambition + LTX translation
 - `docs/BLADE.md` — what a blade is (material, editing regime, game theory)
+- `docs/MEDIA_PIPELINE.md`, `docs/MEDIA_STRATEGY.md`, `docs/VISUAL_ASSETS.md` — media layer
+- `docs/IMAGE_GEN.md` — Cloudflare image-model findings (flux-1-schnell confirmed)
 - `docs/TESTING.md` — strict test notes
 - `docs/mechanisms/` — 29 mechanism specs + `index.yaml` implementation status
 - `docs/ltx/`, `docs/ltx-2.5/` — LTX production research packs
@@ -128,47 +132,38 @@ and is internally consistent, the MVP exists.
 
 ## Next agent: high-urgency priorities (in order)
 
-These are what block "the AI truly writes itself" and real footage. Do them in
-this order. Each is a discrete commit.
+Status snapshot: the LLM author and strategy audit are DONE. The active gaps are
+balance, physics fidelity, and wiring real media/image backends.
 
-### 1. LLMReincarnationAuthor — THE core unmet promise (highest priority)
-The defining RoboBladez mechanic is "the persistent AI writes its own battle-self."
-Today only `BaselineReincarnationAuthor` (a deterministic heuristic over the
-mechanical report) exists. The `ReincarnationContext` + `ReincarnationAuthor`
-protocol are ready; implement a real author that:
-- takes a `ReincarnationContext` (agent snapshot, mechanical report, opponent
-  model, lineage, reflections, daimon advice, human messages)
-- calls an LLM that returns **RBZ-RC-1 JSON** (not Python)
-- parses → validate → normalize → commit; invalid output falls back to baseline
-- produces **materially different** machines than baseline (prove with a test)
+### 1. Balance the strategy archetypes (DONE infrastructure, ACTIVE tuning)
+`robobladez audit-reincarnations` exists (6 author archetypes × bodies, seeded).
+**Honest result: 73% decisive, NO non-transitive cycles, `pressure` dominates,
+`adaptive` loses to everything.** This is the real moat and it's not achieved
+yet. Tune the archetypes until counters emerge (A>B, B>C, C>A):
+- fix `adaptive` (currently loses everything)
+- weaken `pressure` (near-universal winner)
+- then scale seeds/audit to 100–1000 and confirm a non-transitive meta.
 
-Exit test: two agents author different RBZ-RC-1 machines from the same report,
-and they fight differently. Until this exists, "the reincarnation fights" is
-true but "the AI writes itself" is not.
+### 2. Physics fidelity toward simulation quality (DONE 2D kernel, NEXT fidelity)
+The combat engine is a planar rigid-disk kernel (no precession/tilt/CoM-offset).
+See `docs/COMBAT_ENGINE.md`. The path: add center-of-mass offset + precession
+(V1), then tilt/tipping (V2), then validated 3D/2.5D (V3). Each step keeps the
+`PhysicsBackendV2` boundary and bumps `engine_version` (history stays
+reproducible). Better physics → better LTX control signals.
 
-### 2. Prove non-trivial strategy (rmdev Phase 1.4 / rmdev2 Phase 6)
-Run a real seeded audit (100–1000 matches) across reincarnations and bodies.
-Catch: stuck state machines, unreachable states, degenerate orbiting, controller
-oscillation, energy exploits, ring-out pathologies. Then check for
-**non-transitivity** (A beats B, B beats C, C beats A). The game is not proven
-strategically real until this passes. The balance-matrix tooling
-(`robobladez matrix`, `scripts/run_matrix.py`) exists but targets the legacy
-policy zoo — adapt it to reincarnations.
+### 3. Wire a real image-generation backend (DONE provider probe, NEXT wiring)
+`flux-1-schnell` on Cloudflare Workers AI is **confirmed working** (1024x1024
+JPEG, ~1-2s). See `docs/IMAGE_GEN.md`. `VisualForge` still uses a mock backend
+(`mock://`, `qa_score=0.95` hardcoded). Implement `ImageGeneratorBackend` + wire
+`flux-1-schnell` to produce the canonical Boris/Morty/Arena packs, then
+`LTX25Renderer` (submit/status/fetch/retake/reframe).
 
-### 3. Wire a real image-generation backend (Phase 10/16)
-`VisualForge` and the media pipeline use a **mock** backend (`mock://` artifacts,
-`mock-auto-approved` assets, hardcoded `qa_score=0.95`). Implement:
-- `ImageGeneratorBackend` (generate candidates → VisualQA → approve)
-- one real provider to produce the canonical Boris/Morty/Arena packs
-- `LTX25Renderer` with `submit/status/fetch/retake/reframe` against the LTX API
-
-Exit: `robobladez mvp --render` produces a real asset pack + a real render job,
-and `visual_qa` no longer returns "not executed: mock renderer."
+Exit: `robobladez mvp --render` produces a real asset pack + real render job;
+`visual_qa` no longer returns "not executed: mock renderer."
 
 ### 4. CI enforcement
 The workflow `.github/workflows/ci.yml` exists but is not branch-enforced. Turn on
-required checks on `main` (unit + deterministic replay + contract smoke). This is
-cheap and protects everything else.
+required checks on `main`.
 
 ### 5. Daimon visual path (Phase 21) + season mini-loop (Phase 22)
 - Generate a daimon visual pack only when a Daimon actually MANIFESTs (from canon,

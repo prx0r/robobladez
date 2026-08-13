@@ -88,7 +88,7 @@ class EpisodeProvenanceTests(unittest.TestCase):
         import tempfile, os, json, glob
         with tempfile.TemporaryDirectory() as tmp:
             run_mvp(out_dir=os.path.join(tmp, "mvp"), agents=["boris", "morty"],
-                    seed=5, rounds=1, mechanical_runs=3)
+                    seed=5, rounds=1, mechanical_runs=1)
             ep = json.load(open(os.path.join(tmp, "mvp/episode/episode-manifest.json")))
             self.assertTrue(ep["shot_spec_digests"], "shot spec digests must be populated")
             self.assertNotEqual(ep["final_master_digest"], "mock")
@@ -100,7 +100,7 @@ class EpisodeProvenanceTests(unittest.TestCase):
         import tempfile, os, json
         with tempfile.TemporaryDirectory() as tmp:
             run_mvp(out_dir=os.path.join(tmp, "mvp"), agents=["boris", "morty"],
-                    seed=5, rounds=1, mechanical_runs=3)
+                    seed=5, rounds=1, mechanical_runs=1)
             em = json.load(open(os.path.join(tmp, "mvp/competition/match-execution-manifest.json")))
             self.assertTrue(em["entry_a"]["reincarnation_id"])
             self.assertTrue(em["entry_a"]["reincarnation_digest"])

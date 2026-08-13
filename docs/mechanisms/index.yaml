@@ -224,6 +224,20 @@ Status enum:
   canonical_status: [ANALYTICS, INFRA]
   notes: AgentState tracks r001/r002/...; parent links; recorded per match
 
+- id: STRATEGY_AUDIT
+  status: IMPLEMENTED
+  implementation: src/robobladez/reincarnation_audit.py
+  canonical_status: [ANALYTICS]
+  notes: seeded profile-vs-profile audit; decisive rate, non-transitivity cycles,
+         dominance; current result = 73% decisive, no cycles (balance tuning next)
+
+- id: STRATEGY_PROFILES
+  status: IMPLEMENTED
+  implementation: src/robobladez/reincarnation_author.py (BaselineReincarnationAuthor.strategy_profile)
+  canonical_status: [GAMEPLAY]
+  notes: 6 author archetypes (pressure/orbit/bait/counter/endure/adaptive) produce
+         distinct RBZ-RC-1 machines
+
 - id: COMPETITION_ENTRY
   status: IMPLEMENTED
   implementation: src/robobladez/competition.py
