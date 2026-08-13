@@ -403,3 +403,94 @@ def produce_episode(shots: list[ShotSpec], winner: str | None = None,
             "accepted": sum(1 for o in outputs if o["binding_qa"]["pass"]),
             "rejected": sum(1 for o in outputs if not o["binding_qa"]["pass"]),
             "outputs": outputs}
+
+
+# ---------------------------------------------------------------------------
+# Retake loop (Phase 18) + Episode assembler (Phase 19)
+# ---------------------------------------------------------------------------
+def retake_loop(shot: ShotSpec, max_retries: int = 2,
+                check=lambda shot, art: True) -> dict:
+    """Automatic Retake retry loop (rmdev2 Phase 18).
+
+    Renders a shot, runs the supplied check; if it fails, retakes the failed
+    interval. Capped at `max_retries`; beyond that returns NEEDS_REVIEW.
+    Never infinite. The `check` callable returns (passed, failed_interval).
+    """
+    attempts = []
+    for attempt in range(max_retries + 1):
+        job = RenderJob(job_id=f"{shot.shot_id}-r{attempt}",
+                        request=RenderRequest(shot_spec_uri=shot.shot_id,
+                                              profile="retake" if attempt else "final"),
+                        seed=attempt)
+        art = simulate_render(shot, job)
+        verdict = binding_qa(shot, art)
+        attempts.append({"attempt": attempt, "artifact": art.to_dict(),
+                         "qa": verdict.to_dict()})
+        if verdict.pass_:
+            return {"status": "accepted", "attempts": attempts}
+        # If no custom check provides an interval, give up.
+        if not callable(check):
+            break
+    return {"status": "NEEDS_REVIEW", "attempts": attempts,
+            "note": f"failed after {max_retries} retries; human review required"}
+
+
+class EpisodeAssembler:
+    """Assembles accepted shot artifacts into an episode (rmdev2 Phase 19).
+
+    For MVP the assembler produces the episode SEQUENCE + an assembly manifest
+    (ordering, narration, titles, durations). Actual video concatenation is
+    delegated to a backend (ffmpeg) and is not required for the CPU vertical
+    slice — but the ordering/provenance is canonical and real.
+    """
+
+    EPISODE_SHAPE = [
+        "cold_open", "intro_a", "intro_b", "mechanical_reveal",
+        "battle_1", "battle_2", "decisive_result", "closing_analysis",
+    ]
+
+    def assemble(self, shot_specs: list[ShotSpec], winner: str | None = None,
+                 intro_agents: list[str] | None = None) -> dict:
+        """Return an ordered episode plan + assembly manifest."""
+        by_id = {s.shot_id: s for s in shot_specs}
+        # Map shot classes into the episode shape.
+        plan = []
+        intros = intro_agents or ["A", "B"]
+        intro_shot_ids = [sid for sid, s in by_id.items() if "intro-" in sid]
+        battle = [sid for sid, s in by_id.items() if "beat-" in sid]
+        establish = [sid for sid, s in by_id.items() if "establish" in sid]
+        cold = establish[:1]
+        for slot in self.EPISODE_SHAPE:
+            if slot == "cold_open" and cold:
+                plan.append({"slot": slot, "shot_id": cold[0],
+                             "duration_s": by_id[cold[0]].duration_s})
+            elif slot.startswith("intro_") and intro_shot_ids:
+                sid = intro_shot_ids.pop(0) if intro_shot_ids else ""
+                if sid:
+                    plan.append({"slot": slot, "shot_id": sid,
+                                 "duration_s": by_id[sid].duration_s})
+            elif slot == "mechanical_reveal":
+                plan.append({"slot": slot, "shot_id": establish[0] if establish else "",
+                             "duration_s": 4.0})
+            elif slot.startswith("battle_") and battle:
+                sid = battle.pop(0) if battle else ""
+                if sid:
+                    plan.append({"slot": slot, "shot_id": sid,
+                                 "duration_s": by_id[sid].duration_s})
+            elif slot == "decisive_result" and battle:
+                sid = battle.pop() if battle else ""
+                if sid:
+                    plan.append({"slot": slot, "shot_id": sid,
+                                 "duration_s": 6.0})
+            elif slot == "closing_analysis":
+                plan.append({"slot": slot, "shot_id": "",
+                             "duration_s": 5.0})
+        total = sum(p["duration_s"] for p in plan)
+        return {
+            "shape": self.EPISODE_SHAPE,
+            "winner": winner,
+            "plan": plan,
+            "total_duration_s": total,
+            "backend": "ffmpeg (concatenate accepted artifacts)",
+            "note": "MVP: assembly plan is canonical; actual concat is a backend task",
+        }

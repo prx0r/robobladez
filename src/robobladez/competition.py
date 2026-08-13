@@ -46,6 +46,10 @@ class EntrySnapshot:
 
     Everything downstream (engine, media, assets) reads from this snapshot, so
     it can never accidentally reference a different body/daimon/visual version.
+
+    rmdev2 Phase 2 hardening: the snapshot pins the EXACT authored reincarnation
+    (id + canonical AST digest + commitment), so `execution_digest` changes if
+    the battle-self program changes.
     """
     entry: CompetitionEntry
     agent_version: str = "v1"
@@ -57,9 +61,15 @@ class EntrySnapshot:
     visual_identity_version: str = "R0"
     reincarnation_author_type: str = "baseline"
     reincarnation_author_version: str = "1.0"
+    reincarnation_id: str = ""
+    reincarnation_digest: str = ""      # canonical AST sha256 of the battle-self
+    reincarnation_commitment: str = ""
 
     @classmethod
-    def from_entry(cls, entry: CompetitionEntry) -> "EntrySnapshot":
+    def from_entry(cls, entry: CompetitionEntry,
+                   reincarnation_id: str = "",
+                   reincarnation_digest: str = "",
+                   reincarnation_commitment: str = "") -> "EntrySnapshot":
         return cls(
             entry=entry,
             agent_version=entry.agent_version,
@@ -71,6 +81,9 @@ class EntrySnapshot:
             visual_identity_version=entry.visual_identity_version,
             reincarnation_author_type=entry.reincarnation_author_type,
             reincarnation_author_version=entry.reincarnation_author_version,
+            reincarnation_id=reincarnation_id,
+            reincarnation_digest=reincarnation_digest,
+            reincarnation_commitment=reincarnation_commitment,
         )
 
     def digest(self) -> str:
@@ -86,6 +99,9 @@ class EntrySnapshot:
             "visual_identity_version": self.visual_identity_version,
             "reincarnation_author_type": self.reincarnation_author_type,
             "reincarnation_author_version": self.reincarnation_author_version,
+            "reincarnation_id": self.reincarnation_id,
+            "reincarnation_digest": self.reincarnation_digest,
+            "reincarnation_commitment": self.reincarnation_commitment,
         }
         return hashlib.sha256(
             json.dumps(body, sort_keys=True, separators=(",", ":")).encode()

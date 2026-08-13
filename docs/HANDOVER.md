@@ -85,12 +85,15 @@ REINCARNATION  the compiled battle-self that fights
 - `LLMReincarnationAuthor` (Phase 4) — the "AI truly writes itself" backend. The
   interface (`ReincarnationContext`) exists; only `BaselineReincarnationAuthor` is done.
 - Real `LTX25Renderer` / image-gen backend (Phase 10/16) — currently mock.
-- `VisualQA`/`EventQA` on real footage (Phase 17) — currently BindingQA only.
-- `EpisodeAssembler`/ffmpeg + `EpisodeManifest` (Phase 19-20).
-- `Retake` retry loop against real QA (Phase 18).
+- `VisualQA`/`EventQA` on real footage (Phase 17) — currently BindingQA only;
+  `retake_loop` + `EpisodeAssembler` exist but drive mock render/QA.
 - Daimon visual packs tied to actual manifestation (Phase 21).
 - Autonomous season mini-loop (Phase 22), then 100k meta audit (Phase 6).
 - CI workflow exists (`.github/workflows/ci.yml`) but not yet branch-enforced.
+
+Provenance is now verified: `execution_digest` changes when the battle-self AST
+changes, and the episode manifest carries real `shot_spec_digests` +
+`final_master_digest` (tests/test_provenance.py).
 
 ## What NOT to build yet (defer)
 Public entrant SDK, website, spectator frontend, PSRO, Alpha-Rank, 100 bodies,
@@ -119,3 +122,59 @@ Public entrant SDK, website, spectator frontend, PSRO, Alpha-Rank, 100 bodies,
 every artifact links to its parents (RUN.json → execution_digest → entries →
 reincarnations → match → events → shots → controls → qa). If that tree exists
 and is internally consistent, the MVP exists.
+
+---
+
+## Next agent: high-urgency priorities (in order)
+
+These are what block "the AI truly writes itself" and real footage. Do them in
+this order. Each is a discrete commit.
+
+### 1. LLMReincarnationAuthor — THE core unmet promise (highest priority)
+The defining RoboBladez mechanic is "the persistent AI writes its own battle-self."
+Today only `BaselineReincarnationAuthor` (a deterministic heuristic over the
+mechanical report) exists. The `ReincarnationContext` + `ReincarnationAuthor`
+protocol are ready; implement a real author that:
+- takes a `ReincarnationContext` (agent snapshot, mechanical report, opponent
+  model, lineage, reflections, daimon advice, human messages)
+- calls an LLM that returns **RBZ-RC-1 JSON** (not Python)
+- parses → validate → normalize → commit; invalid output falls back to baseline
+- produces **materially different** machines than baseline (prove with a test)
+
+Exit test: two agents author different RBZ-RC-1 machines from the same report,
+and they fight differently. Until this exists, "the reincarnation fights" is
+true but "the AI writes itself" is not.
+
+### 2. Prove non-trivial strategy (rmdev Phase 1.4 / rmdev2 Phase 6)
+Run a real seeded audit (100–1000 matches) across reincarnations and bodies.
+Catch: stuck state machines, unreachable states, degenerate orbiting, controller
+oscillation, energy exploits, ring-out pathologies. Then check for
+**non-transitivity** (A beats B, B beats C, C beats A). The game is not proven
+strategically real until this passes. The balance-matrix tooling
+(`robobladez matrix`, `scripts/run_matrix.py`) exists but targets the legacy
+policy zoo — adapt it to reincarnations.
+
+### 3. Wire a real image-generation backend (Phase 10/16)
+`VisualForge` and the media pipeline use a **mock** backend (`mock://` artifacts,
+`mock-auto-approved` assets, hardcoded `qa_score=0.95`). Implement:
+- `ImageGeneratorBackend` (generate candidates → VisualQA → approve)
+- one real provider to produce the canonical Boris/Morty/Arena packs
+- `LTX25Renderer` with `submit/status/fetch/retake/reframe` against the LTX API
+
+Exit: `robobladez mvp --render` produces a real asset pack + a real render job,
+and `visual_qa` no longer returns "not executed: mock renderer."
+
+### 4. CI enforcement
+The workflow `.github/workflows/ci.yml` exists but is not branch-enforced. Turn on
+required checks on `main` (unit + deterministic replay + contract smoke). This is
+cheap and protects everything else.
+
+### 5. Daimon visual path (Phase 21) + season mini-loop (Phase 22)
+- Generate a daimon visual pack only when a Daimon actually MANIFESTs (from canon,
+  never hardcoded). Test with a separate later-career fixture.
+- 4-agent mini-season, media only for the top 2–3 significant matches.
+
+## What NOT to prioritize
+Public entrant SDK, website, spectator frontend, PSRO, Alpha-Rank, 100 bodies,
+20 ability families, economy, live streaming, custom LTX LoRAs, complex 3D arena.
+All multipliers; none prove the core. Do the five items above first.

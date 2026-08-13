@@ -228,10 +228,31 @@ Status enum:
   notes: CompetitionEntry + immutable EntrySnapshot (agent/body/daimon/visual versions)
 
 - id: EXECUTION_MANIFEST
-  status: IMPLEMENTED
+  status: VERIFIED
   implementation: src/robobladez/competition.py (MatchExecutionManifest)
+  tests: tests/test_provenance.py
   canonical_status: [INFRA]
-  notes: execution_digest pins engine/arena/entries/reincarnations/seed; EXACT MATCH
+  notes: execution_digest pins engine/arena/entries/reincarnation AST digests/seed;
+         EXACT MATCH changes when the battle-self program changes
+
+- id: EPISODE_MANIFEST
+  status: IMPLEMENTED
+  implementation: src/robobladez/mvp.py
+  tests: tests/test_provenance.py
+  canonical_status: [INFRA]
+  notes: real shot_spec_digests + final_master_digest; provenance chain
+
+- id: RETAKE_LOOP
+  status: IMPLEMENTED
+  implementation: src/robobladez/media.py (retake_loop)
+  canonical_status: [NARRATIVE]
+  notes: capped retries; NEEDS_REVIEW beyond max
+
+- id: EPISODE_ASSEMBLER
+  status: IMPLEMENTED
+  implementation: src/robobladez/media.py (EpisodeAssembler)
+  canonical_status: [NARRATIVE]
+  notes: canonical episode ordering (cold-open/intros/battle/result); ffmpeg backend
 
 - id: CANONICAL_EVENT
   status: IMPLEMENTED

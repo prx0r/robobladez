@@ -50,16 +50,15 @@ def run_mvp(out_dir: str = "out/mvp", agents: list[str] | None = None,
     agent_a = AgentState(a_id, genesis_seed=f"{seed}:{a_id}")
     agent_b = AgentState(b_id, genesis_seed=f"{seed}:{b_id}")
 
-    # ---- Competition entries + immutable snapshots ----
-    entry_a = make_entry(agent_a, body_a, body_version="R1")
-    entry_b = make_entry(agent_b, body_b, body_version="R1")
-    snap_a = EntrySnapshot.from_entry(entry_a)
-    snap_b = EntrySnapshot.from_entry(entry_b)
-
     # ---- Battle (reincarnation path) ----
     outcome = run_battle(agent_a, body_a, agent_b, body_b,
                          mechanical_runs=mechanical_runs,
                          strategic_rounds=rounds, base_seed=seed)
+
+    # ---- Competition entries + immutable snapshots (bind the exact reincarnations) ----
+    entry_a = make_entry(agent_a, body_a, body_version="R1")
+    entry_b = make_entry(agent_b, body_b, body_version="R1")
+    snap_a, snap_b = _snapshots_with_bindings(outcome, entry_a, entry_b, body_a, body_b)
 
     # ---- Execution manifest (Phase 2) ----
     exec_manifest = build_execution_manifest(
@@ -142,7 +141,7 @@ def run_mvp(out_dir: str = "out/mvp", agents: list[str] | None = None,
                              "accepted": sum(1 for v in verdicts if v["pass"]),
                              "total": len(verdicts)},
         "episode/episode-manifest.json": _episode_manifest(
-            episode, exec_digest, outcome.match.replay_digest, verdicts),
+            episode, exec_digest, outcome.match.replay_digest, verdicts, shot_specs),
     }
     # Per-shot and per-frame files.
     for spec in shot_specs:
@@ -173,6 +172,37 @@ def run_mvp(out_dir: str = "out/mvp", agents: list[str] | None = None,
     return run
 
 
+def _snapshots_with_bindings(outcome, entry_a, entry_b, body_a, body_b):
+    """Build EntrySnapshots bound to the exact reincarnation ASTs that fought.
+
+    Reads outcome.match.reincarnation_bindings (keyed by body_id) so the
+    execution_digest covers the actual battle-self programs.
+    """
+    bindings = outcome.match.reincarnation_bindings
+    snap_a = EntrySnapshot.from_entry(
+        entry_a,
+        reincarnation_id=_rc_id_for(bindings, body_a.id, outcome, body_a),
+        reincarnation_digest=bindings.get(body_a.id, {}).get("canonical_ast_sha256", ""),
+        reincarnation_commitment=bindings.get(body_a.id, {}).get("commitment", ""))
+    snap_b = EntrySnapshot.from_entry(
+        entry_b,
+        reincarnation_id=_rc_id_for(bindings, body_b.id, outcome, body_b),
+        reincarnation_digest=bindings.get(body_b.id, {}).get("canonical_ast_sha256", ""),
+        reincarnation_commitment=bindings.get(body_b.id, {}).get("commitment", ""))
+    return snap_a, snap_b
+
+
+def _rc_id_for(bindings, body_id, outcome, body):
+    b = bindings.get(body_id, {})
+    if b.get("reincarnation_id"):
+        return b["reincarnation_id"]
+    # Fall back to the avatar manifest id.
+    for av in outcome.avatars.values():
+        if av.body_id == body_id:
+            return av.manifest.reincarnation_id
+    return ""
+
+
 def _build_control_frames(events, shot_specs):
     from .control_frames import ControlFrameBuilder
     builder = ControlFrameBuilder()
@@ -195,17 +225,28 @@ def _agent_snapshot(agent: AgentState) -> dict:
     return agent_snapshot(agent, 1)
 
 
-def _episode_manifest(episode, exec_digest, replay_digest, verdicts) -> dict:
+def _episode_manifest(episode, exec_digest, replay_digest, verdicts, shot_specs) -> dict:
+    """Complete episode provenance chain (rmdev2 Phase 20).
+
+    Links episode -> match execution -> replay -> canon events -> shot specs
+    (by their content digests) -> QA verdicts -> a final master digest, so any
+    frame can be traced to canon.
+    """
+    shot_digests = {s.shot_id: s.digest() for s in shot_specs}
+    import hashlib
+    master_digest = hashlib.sha256(
+        json.dumps(shot_digests, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()[:20]
     return {
         "episode_id": episode["episode_id"],
         "match_id": episode["match_id"],
         "execution_digest": exec_digest,
         "replay_digest": replay_digest,
         "canon_event_ids": episode["canonical_event_ids"],
-        "shot_spec_digests": [],
+        "shot_spec_digests": shot_digests,
         "qa_accepted": sum(1 for v in verdicts if v["pass"]),
         "qa_total": len(verdicts),
-        "final_master_digest": "mock",
+        "final_master_digest": master_digest,
     }
 
 
