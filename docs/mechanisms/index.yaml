@@ -1,0 +1,262 @@
+# Mechanism Coverage Index
+
+Machine-checkable implementation status for every mechanism. Prevents prose from silently
+outrunning runtime (rm8 detailed review §9).
+
+Status enum:
+- IDEA — concept only, not documented/specified
+- SPECIFIED — fully documented with the mechanism template
+- SCAFFOLDED — partial/placeholder implementation
+- IMPLEMENTED — runtime code exists
+- VERIFIED — implemented + covered by tests
+
+## Competition
+- id: MATCH_LIFECYCLE
+  status: VERIFIED
+  implementation: src/robobladez/engine.py
+  tests: tests/test_engine.py
+  canonical_status: [GAMEPLAY]
+
+- id: MECHANICAL_BASELINE
+  status: VERIFIED
+  implementation: src/robobladez/mechanical.py
+  tests: tests/test_protocol.py
+  canonical_status: [ANALYTICS]
+
+- id: POLICY_COMMIT_REVEAL
+  status: IMPLEMENTED
+  implementation: src/robobladez/policy.py, src/robobladez/reincarnation/normalize.py
+  tests: tests/test_engine.py, tests/test_reincarnation.py
+  canonical_status: [GAMEPLAY, INFRA]
+
+- id: SIMULTANEOUS_DECISION
+  status: VERIFIED
+  implementation: src/robobladez/engine.py
+  tests: tests/test_engine.py
+  canonical_status: [GAMEPLAY]
+
+- id: ROUND_MEMORY
+  status: IMPLEMENTED
+  implementation: src/robobladez/policy.py (mutable self-state)
+  tests: (in ROUND-MEMORY.md)
+  canonical_status: [GAMEPLAY]
+
+- id: WIN_CONDITIONS
+  status: VERIFIED
+  implementation: src/robobladez/physics.py
+  tests: tests/test_engine.py
+  canonical_status: [GAMEPLAY]
+
+- id: REPLAY_VERIFICATION
+  status: VERIFIED
+  implementation: src/robobladez/engine.py (replay_digest)
+  tests: tests/test_engine.py
+  canonical_status: [INFRA]
+
+- id: MATCH_CHALLENGE_SEED_PROTOCOL
+  status: IMPLEMENTED
+  implementation: src/robobladez/challenge.py
+  tests: tests/test_reincarnation.py
+  canonical_status: [GAMEPLAY, INFRA]
+
+## Physics
+- id: BLADE_BODY
+  status: VERIFIED
+  implementation: src/robobladez/model.py (BladeSpec)
+  tests: tests/test_engine.py
+  canonical_status: [GAMEPLAY]
+
+- id: LAUNCH
+  status: VERIFIED
+  implementation: src/robobladez/engine.py
+  tests: tests/test_engine.py
+  canonical_status: [GAMEPLAY]
+
+- id: SPIN_DYNAMICS
+  status: VERIFIED
+  implementation: src/robobladez/physics.py
+  tests: tests/test_physics.py
+  canonical_status: [GAMEPLAY]
+
+- id: CONTACT_COLLISION
+  status: VERIFIED
+  implementation: src/robobladez/physics.py
+  tests: tests/test_physics.py
+  canonical_status: [GAMEPLAY]
+
+- id: STADIUM
+  status: VERIFIED
+  implementation: src/robobladez/physics.py (bowl_force)
+  tests: tests/test_physics.py
+  canonical_status: [GAMEPLAY]
+
+- id: ENERGY
+  status: VERIFIED
+  implementation: src/robobladez/physics.py
+  tests: tests/test_physics.py
+  canonical_status: [GAMEPLAY]
+
+- id: INTEGRITY_BURST
+  status: VERIFIED
+  implementation: src/robobladez/physics.py
+  tests: tests/test_engine.py
+  canonical_status: [GAMEPLAY]
+
+- id: RINGOUT_SPINOUT
+  status: VERIFIED
+  implementation: src/robobladez/physics.py
+  tests: tests/test_engine.py
+  canonical_status: [GAMEPLAY]
+
+## Intelligence
+- id: OBSERVATION_MODEL
+  status: VERIFIED
+  implementation: src/robobladez/model.py (Observation)
+  tests: tests/test_engine.py
+  canonical_status: [GAMEPLAY]
+
+- id: ACTION_MODEL
+  status: VERIFIED
+  implementation: src/robobladez/model.py (Action)
+  tests: tests/test_engine.py
+  canonical_status: [GAMEPLAY]
+
+- id: POLICY_RUNTIME
+  status: IMPLEMENTED
+  implementation: src/robobladez/policy.py, src/robobladez/reincarnation/runtime.py
+  tests: tests/test_reincarnation.py
+  canonical_status: [GAMEPLAY, INFRA]
+
+- id: OPPONENT_MODEL
+  status: IMPLEMENTED
+  implementation: src/robobladez/agent.py (OpponentModel)
+  tests: tests/test_agent.py
+  canonical_status: [ANALYTICS]
+
+- id: POSTMATCH_REFLECTION
+  status: IMPLEMENTED
+  implementation: src/robobladez/evolution.py, src/robobladez/battle.py
+  tests: tests/test_protocol.py
+  canonical_status: [ANALYTICS]
+
+- id: POLICY_EVOLUTION
+  status: SCAFFOLDED
+  implementation: (lineage via agent policy_versions)
+  tests: (see POLICY-EVOLUTION.md)
+  canonical_status: [ANALYTICS]
+
+- id: SALIENCE_DETECTION
+  status: VERIFIED
+  implementation: src/robobladez/salience.py
+  tests: tests/test_reincarnation.py
+  canonical_status: [ANALYTICS]
+
+- id: SIGNATURE_REGISTRY
+  status: VERIFIED
+  implementation: src/robobladez/signatures.py
+  tests: tests/test_reincarnation.py, tests/test_agent.py
+  canonical_status: [ANALYTICS]
+
+## Character
+- id: AGENT_IDENTITY
+  status: VERIFIED
+  implementation: src/robobladez/agent.py (AgentState)
+  tests: tests/test_agent.py
+  canonical_status: [ANALYTICS]
+
+- id: GENESIS_SEED
+  status: IMPLEMENTED
+  implementation: src/robobladez/agent.py
+  tests: tests/test_agent.py
+  canonical_status: [INFRA]
+
+- id: AGENT_VERSIONING
+  status: IMPLEMENTED
+  implementation: src/robobladez/agent.py (agent_snapshot), src/robobladez/canon.py
+  tests: tests/test_agent.py
+  canonical_status: [INFRA]
+
+- id: BEHAVIOR_PHENOTYPE
+  status: VERIFIED
+  implementation: src/robobladez/analysis.py
+  tests: tests/test_engine.py
+  canonical_status: [ANALYTICS]
+
+- id: DAIMON_EMERGENCE
+  status: IMPLEMENTED
+  implementation: src/robobladez/agent.py (DaimonState)
+  tests: tests/test_protocol.py
+  canonical_status: [ANALYTICS, NARRATIVE]
+
+- id: SIGNATURE_MOVES
+  status: VERIFIED
+  implementation: src/robobladez/signatures.py
+  tests: tests/test_reincarnation.py
+  canonical_status: [ANALYTICS]
+
+- id: HUMAN_INTERACTION
+  status: IMPLEMENTED
+  implementation: src/robobladez/agent.py (HumanInteractionEvent)
+  tests: tests/test_agent.py
+  canonical_status: [ANALYTICS, INFRA]
+
+- id: REINCARNATION_COMPILER
+  status: IMPLEMENTED
+  implementation: src/robobladez/reincarnation/
+  tests: tests/test_reincarnation.py
+  canonical_status: [GAMEPLAY, INFRA]
+  version: RBZ-RC-1
+
+- id: REINCARNATION_STORAGE
+  status: IMPLEMENTED
+  implementation: src/robobladez/reincarnation/lineage.py
+  tests: tests/test_reincarnation.py
+  canonical_status: [INFRA]
+
+## Progression / League / Canon / Media (planned)
+- id: BODY_EVOLUTION
+  status: SPECIFIED
+  implementation: (planned)
+  canonical_status: [ANALYTICS]
+
+- id: ABILITY_SYSTEM
+  status: SPECIFIED
+  implementation: (planned)
+  canonical_status: [GAMEPLAY]
+
+- id: META_EVOLUTION
+  status: SPECIFIED
+  implementation: (planned)
+  canonical_status: [ANALYTICS]
+
+- id: SEASON_RULES
+  status: SPECIFIED
+  implementation: (planned)
+  canonical_status: [ANALYTICS]
+
+- id: MATCHMAKING
+  status: SPECIFIED
+  canonical_status: [ANALYTICS]
+
+- id: RANKINGS
+  status: SCAFFOLDED
+  implementation: src/robobladez/league.py (round_robin standings)
+  canonical_status: [ANALYTICS]
+
+- id: TOURNAMENTS
+  status: SPECIFIED
+  canonical_status: [ANALYTICS]
+
+- id: CANON_EVENT_REDUCERS
+  status: SPECIFIED
+  canonical_status: [INFRA]
+
+- id: STORY_COMPILER
+  status: IMPLEMENTED
+  implementation: src/robobladez/story.py
+  canonical_status: [NARRATIVE]
+
+- id: SHOT_GRAPH
+  status: IMPLEMENTED
+  implementation: src/robobladez/shots.py
+  canonical_status: [NARRATIVE]

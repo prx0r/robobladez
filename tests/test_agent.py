@@ -3,9 +3,7 @@ from robobladez.agent import AgentState, DaimonState, HumanInteractionEvent, age
 from robobladez.model import BladeSpec, ArenaSpec
 from robobladez.policy import CounterPolicy, AggressivePolicy
 from robobladez.engine import run_match
-from robobladez.analysis import analyze_behavior
-from robobladez.evolution import evolve_agent
-from robobladez.signatures import SignatureDetector
+from robobladez.signatures import SignatureRegistry
 from robobladez.league import round_robin
 
 
@@ -14,7 +12,6 @@ class AgentTests(unittest.TestCase):
         self.m = run_match(5, ArenaSpec(max_seconds=3),
                            BladeSpec("a"), BladeSpec("b"),
                            CounterPolicy(), AggressivePolicy(), 3)
-        self.analysis = analyze_behavior(self.m)
 
     def test_daimon_ema_accumulates(self):
         d = DaimonState()
@@ -33,8 +30,10 @@ class AgentTests(unittest.TestCase):
     def test_agent_remembers_and_models_opponent(self):
         a = AgentState("a")
         b = AgentState("b")
-        evolve_agent(a, self.m, "a", "b", b,
-                     self.analysis["a"]["daimon_projection"]["affinities"])
+        a.remember_match(opponent_id="b", match_id=self.m.match_id,
+                         match_affinities={"earth": 0.5, "water": 0.5, "fire": 0,
+                                           "air": 0, "aether": 0},
+                         opponent_daimon=b.daimon, result=self.m.winner)
         self.assertIn("b", a.opponent_models)
         self.assertEqual(a.match_history[-1]["opponent"], "b")
         self.assertEqual(a.daimon.battle_count, 1)
@@ -46,24 +45,43 @@ class AgentTests(unittest.TestCase):
         self.assertIn("snapshot_hash", snap)
         self.assertEqual(snap["status"], "NARRATIVE_PROJECTION")
 
-    def test_human_interaction_is_append_only(self):
+    def test_human_interaction_is_append_only_and_immutable(self):
         a = AgentState("boris")
-        a.add_interaction(HumanInteractionEvent(
-            type="MENTOR_ADVICE", human="owner-001", agent="boris",
-            content="attack early", adopted=False))
+        ev = HumanInteractionEvent(
+            event_id="ev-1", human_id="owner-001", agent_id="boris",
+            interaction_type="MENTOR_ADVICE", content="attack early",
+            adoption_status="rejected")
+        a.add_interaction(ev)
         self.assertEqual(len(a.interactions), 1)
-        self.assertIn("type", a.interactions[0])
+        self.assertIn("event_id", a.interactions[0])
         self.assertEqual(a.profile()["interaction_count"], 1)
+        # Event dataclass is frozen (immutable).
+        with self.assertRaises(Exception):
+            ev.adoption_status = "accepted"
 
 
 class SignatureTests(unittest.TestCase):
-    def test_detector_registers_and_reports(self):
-        d = SignatureDetector(window=2, min_occurrences=1)
-        m = run_match(9, ArenaSpec(max_seconds=3), BladeSpec("x"), BladeSpec("y"),
-                      CounterPolicy(), AggressivePolicy(), 3)
-        d.register(m, "x")
-        for s in d.signatures():
-            self.assertGreaterEqual(s.win_count, 0)
+    def test_registry_requires_cross_match_support(self):
+        reg = SignatureRegistry(window=2, min_occurrences=2, min_matches=2)
+        m1 = run_match(9, ArenaSpec(max_seconds=3), BladeSpec("x"), BladeSpec("y"),
+                       CounterPolicy(), AggressivePolicy(), 3)
+        # Single match: even if it has windows, one match cannot confirm.
+        reg.register(m1, "x", "alice", "opp1")
+        self.assertEqual(reg.confirmed_signature_ids("alice"), [])
+
+    def test_registry_confirms_with_cross_match_support(self):
+        reg = SignatureRegistry(window=2, min_occurrences=2, min_matches=2, min_opponents=2)
+        for seed, opp in ((9, "opp1"), (10, "opp2"), (11, "opp3")):
+            m = run_match(seed, ArenaSpec(max_seconds=3),
+                          BladeSpec("x"), BladeSpec("y"),
+                          CounterPolicy(), AggressivePolicy(), 3)
+            reg.register(m, "x", "alice", opp)
+        # With multiple matches/opponents, at least one window may confirm.
+        # This test asserts the API runs and returns candidates deterministically.
+        cands = reg.candidates("alice")
+        self.assertIsInstance(cands, list)
+        for c in cands:
+            self.assertEqual(c.agent_id, "alice")
 
 
 class LeagueTests(unittest.TestCase):

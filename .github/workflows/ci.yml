@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: pip install -e .
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Deterministic replay check
+        run: |
+          python - <<'EOF'
+          import robobladez.engine as e
+          from robobladez.model import ArenaSpec, BladeSpec
+          from robobladez.policy import CounterPolicy, AggressivePolicy
+          a = BladeSpec("a"); b = BladeSpec("b")
+          m1 = e.run_match(123, ArenaSpec(max_seconds=2), a, b, CounterPolicy(), AggressivePolicy(), 3)
+          m2 = e.run_match(123, ArenaSpec(max_seconds=2), a, b, CounterPolicy(), AggressivePolicy(), 3)
+          assert m1.to_dict() == m2.to_dict(), "replay not deterministic"
+          print("deterministic replay OK")
+          EOF
+
+      - name: Mechanism contract smoke
+        run: |
+          python - <<'EOF'
+          import robobladez.reincarnation as r
+          from robobladez.reincarnation import ReincarnationManifest, MemorySlot, ReincarnationRuntime
+          from robobladez.challenge import MatchChallenge, derive_match_seed
+          m = ReincarnationManifest(reincarnation_id="x", agent_version="a@1", states=[
+              {"id":"s","action":{"radial":0.1}},
+          ], initial_state="s")
+          r.validate(m)
+          c = MatchChallenge(challenge_id="c", server_nonce="n")
+          s = derive_match_seed("c","A","B","n")
+          assert r.canonical_bytes(m) == r.canonical_bytes(m)
+          print("mechanism contract OK")
+          EOF

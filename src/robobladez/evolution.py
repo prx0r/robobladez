@@ -2,8 +2,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
-from .agent import AgentState
-
 
 @dataclass
 class PostMatchReflection:
@@ -66,24 +64,3 @@ def reflect(match: Any, self_id: str, opponent_id: str) -> PostMatchReflection:
         beliefs=beliefs,
         proposed_experiments=experiments,
     )
-
-
-def evolve_agent(agent: AgentState, match: Any, self_id: str,
-                 opponent_id: str, opponent_agent: AgentState | None,
-                 match_affinities: dict[str, float],
-                 has_signature: bool = False, salient: bool = False) -> PostMatchReflection:
-    opponent_daimon = opponent_agent.daimon if opponent_agent else agent.daimon
-    reflection = reflect(match, self_id, opponent_id)
-    # Reflect as the persistent character, not the temporary blade id.
-    reflection.agent_id = agent.agent_id
-    reflection.opponent_id = opponent_agent.agent_id if opponent_agent else opponent_id
-    agent.remember_match(
-        opponent_id=opponent_agent.agent_id if opponent_agent else opponent_id,
-        match_affinities=match_affinities,
-        opponent_daimon=opponent_daimon,
-        result=match.winner,
-        reflection=reflection.to_dict(),
-        has_signature=has_signature,
-        salient=salient,
-    )
-    return reflection

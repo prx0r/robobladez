@@ -50,12 +50,16 @@ class BattleTests(unittest.TestCase):
 
 
 class DaimonTests(unittest.TestCase):
+    def _sig(self, i):
+        return [f"sig-{i % 3}"] if (i % 10 == 0) else []
+
     def test_naming_at_manifest(self):
         d = DaimonState()
-        # 40+ battles, 2+ signatures, 1+ salient -> MANIFEST (stage 3)
+        # 40+ battles, 2+ confirmed signatures, 1+ salient, stable phenotype -> MANIFEST.
         for i in range(45):
             d.update({"earth": 1, "water": 0, "fire": 0, "air": 0, "aether": 0},
-                     alpha=0.5, has_signature=(i % 10 == 0), salient=(i % 20 == 0))
+                     alpha=0.5, confirmed_signature_ids=self._sig(i),
+                     salience_evidence_ids=[f"UPSET|alice|m{i}"] if (i % 20 == 0) else [])
         self.assertEqual(d.stage, "manifest")
         self.assertIsNotNone(d.name)
 
@@ -64,9 +68,23 @@ class DaimonTests(unittest.TestCase):
         for _ in range(60):
             d.update({"earth": 1, "water": 0, "fire": 0, "air": 0, "aether": 0},
                      alpha=0.5)
-        # Many battles but no signatures/salient events -> cannot reach MANIFEST.
+        # Many battles but no confirmed signatures or salient events -> stuck at PROTO.
         self.assertEqual(d.stage, "proto")
         self.assertIsNone(d.name)
+
+    def test_single_decisive_match_does_not_inflate_salience(self):
+        from robobladez.salience import SalienceDetector
+        from robobladez.battle import run_battle
+        from robobladez.zoo import make_body
+        a = AgentState("alice")
+        b = AgentState("bob")
+        outcome = run_battle(a, make_body("balanced", "-a"), b,
+                             make_body("balanced", "-b"),
+                             ArenaSpec(max_seconds=3),
+                             mechanical_runs=3, strategic_rounds=3, base_seed=5)
+        # An ordinary decisive match must NOT award career events to both agents.
+        for agent_id in ("alice", "bob"):
+            self.assertEqual(outcome.salience.get(agent_id, []), [])
 
     def test_snapshot(self):
         s = agent_snapshot(AgentState("x"), 1)

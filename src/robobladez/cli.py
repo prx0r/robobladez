@@ -35,7 +35,9 @@ def _battle(out: str) -> dict:
             k: v.policy.id for k, v in outcome.avatars.items()
         },
         "winner": outcome.match.winner,
+        "winner_agent_id": outcome.winner_agent_id(),
         "reflections": outcome.reflections,
+        "salience": {k: [e["type"] for e in v] for k, v in outcome.salience.items()},
         "daimons": {
             k: {"dominant": v.daimon.dominant(),
                 "affinities": v.daimon.affinities,

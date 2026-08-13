@@ -23,7 +23,7 @@ DAIMON_STAGES = ("latent", "proto", "emerging", "manifest", "developed", "ascend
 
 @dataclass
 class DaimonState:
-    """Persistent companion identity, projected from measured behavior (rm6).
+    """Persistent companion identity, projected from measured behavior (rm6/rm8).
 
     Two layers:
       1. UNDERLYING STATE (grounded, ANALYTICS): behavior phenotype, elemental
@@ -36,6 +36,11 @@ class DaimonState:
     genesis: it coheres from lived competitive history and, upon MANIFEST,
     becomes a second, distinct perspective alongside the agent (rm6). It is
     explicitly non-causal with respect to the engine (Constitution rule 8).
+
+    rm8: stage advancement consumes *typed evidence IDs* (from a
+    SalienceDetector and a persistent SignatureRegistry), never a raw boolean.
+    Salient events are deduplicated by evidence_id; signatures only count when
+    CONFIRMED (cross-match, cross-opponent support).
     """
     affinities: dict[str, float] = field(
         default_factory=lambda: {k: 0.2 for k in ELEMENTS}
@@ -45,41 +50,53 @@ class DaimonState:
     name: str | None = None
     visual_version: str = "v0"
     ability_lineage: list[str] = field(default_factory=list)
-    signature_candidates: int = 0  # number of distinct measured recurring patterns
-    salient_events: int = 0        # career-defining moments (upsets, streaks)
-    contradiction_count: int = 0   # times self-concept diverged from measured behavior
+    confirmed_signature_ids: list[str] = field(default_factory=list)
+    salient_event_ids: list[str] = field(default_factory=list)
+    recent_affinities: list[dict[str, float]] = field(default_factory=list)
+    # Stable phenotype / affinity gates (rm8 P1): rolling window length.
+    STABILITY_WINDOW = 8
 
     # Structural stage requirements (rm6): all must be met to advance.
-    # stage_index: (min_battles, min_signature_candidates, min_salient_events)
+    # stage_index: (min_battles, min_confirmed_signatures, min_salient_events,
+    #               min_phenotype_stability)
     STAGE_REQ = {
-        1: (10, 0, 0),    # proto
-        2: (25, 1, 0),    # emerging
-        3: (40, 2, 1),    # manifest
-        4: (60, 4, 3),    # developed
-        5: (90, 6, 6),    # ascended
+        1: (10, 0, 0, 0.0),        # proto
+        2: (25, 1, 0, 0.0),        # emerging
+        3: (40, 2, 1, 0.6),        # manifest
+        4: (60, 4, 3, 0.7),        # developed
+        5: (90, 6, 6, 0.8),        # ascended
     }
 
     def update(self, match_affinities: dict[str, float], alpha: float = 0.4,
-               has_signature: bool = False, salient: bool = False) -> None:
+               confirmed_signature_ids: list[str] | None = None,
+               salience_evidence_ids: list[str] | None = None) -> None:
+        """Apply one match's evidence. Evidence is deduplicated by ID."""
         self.battle_count += 1
         for k in ELEMENTS:
             v = match_affinities.get(k, 0.0)
             self.affinities[k] = alpha * v + (1 - alpha) * self.affinities.get(k, 0.0)
         total = sum(self.affinities.values()) or 1.0
         self.affinities = {k: v / total for k, v in self.affinities.items()}
-        if has_signature:
-            self.signature_candidates += 1
-        if salient:
-            self.salient_events += 1
+        self.recent_affinities.append(dict(self.affinities))
+        if len(self.recent_affinities) > self.STABILITY_WINDOW:
+            self.recent_affinities = self.recent_affinities[-self.STABILITY_WINDOW:]
+
+        for sig_id in (confirmed_signature_ids or []):
+            if sig_id not in self.confirmed_signature_ids:
+                self.confirmed_signature_ids.append(sig_id)
+        for ev_id in (salience_evidence_ids or []):
+            if ev_id not in self.salient_event_ids:
+                self.salient_event_ids.append(ev_id)
         self._advance_stage()
 
     def _advance_stage(self) -> None:
         idx = DAIMON_STAGES.index(self.stage)
-        # Advance as far as structural requirements allow.
         while idx < len(DAIMON_STAGES) - 1:
-            nb, ns, ne = self.STAGE_REQ.get(idx + 1, (1 << 30,) * 3)
-            if (self.battle_count >= nb and self.signature_candidates >= ns
-                    and self.salient_events >= ne):
+            nb, ns, ne, ns_min = self.STAGE_REQ.get(idx + 1, (1 << 30,) * 4)
+            if (self.battle_count >= nb
+                    and len(self.confirmed_signature_ids) >= ns
+                    and len(self.salient_event_ids) >= ne
+                    and self.phenotype_stability() >= ns_min):
                 idx += 1
             else:
                 break
@@ -90,12 +107,29 @@ class DaimonState:
             # Naming happens at MANIFEST (rm6: daimon becomes a real companion).
             if self.name is None and idx >= 3:
                 self.name = self._generate_name()
-                self.ability_lineage.append("signature")
+
+    def phenotype_stability(self) -> float:
+        """1.0 - max drift of any elemental affinity across the stability window.
+
+        1.0 = perfectly stable (no drift); 0.0 = total flip-flop. This is the
+        executable form of the doc's 'stable phenotype/affinity' requirement.
+        """
+        if len(self.recent_affinities) < 2:
+            return 0.0
+        base = self.recent_affinities[0]
+        max_drift = 0.0
+        for a in self.recent_affinities[1:]:
+            for k in ELEMENTS:
+                max_drift = max(max_drift, abs(a.get(k, 0.0) - base.get(k, 0.0)))
+        return max(0.0, 1.0 - max_drift)
 
     def _generate_name(self) -> str:
+        # rm8 P2: keep the narrative name downstream and grounded in phenotype;
+        # do NOT bake a fixed elemental->name map. Deterministic but not
+        # preauthored as a specific character.
         dom = self.dominant()
-        root = {"earth": "terra", "water": "penelope", "fire": "magma",
-                "air": "zephyr", "aether": "nova"}.get(dom, "daemon")
+        root = {"earth": "terra", "water": "nereid", "fire": "ignis",
+                "air": "aura", "aether": "flux"}.get(dom, "daemon")
         return f"{root.capitalize()}-{self.battle_count}"
 
     def dominant(self) -> str:
@@ -128,22 +162,29 @@ class OpponentModel:
         return asdict(self)
 
 
-@dataclass
+@dataclass(frozen=True)
 class HumanInteractionEvent:
-    """A canonical record of human-agent interaction (rm6).
+    """Canonical, immutable, hash-addressed human-agent interaction (rm8).
 
-    Human influence is explicit and append-only: genesis, coaching, engineering
-    approval, and strategic conversation are all stored as events, never as
-    silent mutation of the agent. `adopted` records whether the agent followed
-    the advice, which builds shared history and is itself a character signal.
+    Human influence is explicit and append-only. Each event carries provenance:
+    a stable event_id/hash, adoption status, and links to the specific agent
+    version / reincarnation it influenced (so the show can truthfully claim
+    "Boris accepted Tom's advice and R028 incorporated transition T14").
     """
-    type: str                      # MENTOR_ADVICE | GENESIS | APPROVAL | CONVERSATION
-    human: str
-    agent: str
-    content: str
-    timestamp: str = ""
+    event_id: str
+    schema_version: str = "rbz-interaction-1"
+    occurred_at: str = ""
+    recorded_at: str = ""
+    human_id: str = ""
+    agent_id: str = ""
+    interaction_type: str = "MENTOR_ADVICE"  # MENTOR_ADVICE|GENESIS|APPROVAL|CONVERSATION
+    content_hash: str = ""
+    content: str = ""
     agent_response: str = ""
-    adopted: bool = False
+    adoption_status: str = "pending"  # pending|rejected|accepted|partially_accepted
+    adopted_into_agent_version: str = ""
+    adopted_into_reincarnation_id: str = ""
+    supersedes_event_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -173,15 +214,20 @@ class AgentState:
     def remember_match(self, opponent_id: str, match_affinities: dict[str, float],
                        opponent_daimon: "DaimonState", result: str | None,
                        reflection: dict[str, Any] | None = None,
-                       has_signature: bool = False, salient: bool = False) -> None:
-        self.daimon.update(match_affinities, has_signature=has_signature,
-                           salient=salient)
+                       match_id: str = "",
+                       confirmed_signature_ids: list[str] | None = None,
+                       salience_evidence_ids: list[str] | None = None) -> None:
+        self.daimon.update(
+            match_affinities,
+            confirmed_signature_ids=confirmed_signature_ids,
+            salience_evidence_ids=salience_evidence_ids)
         model = self.opponent_models.setdefault(
             opponent_id, OpponentModel(opponent_id))
         model.observe(opponent_daimon, result, self.agent_id)
         self.match_history.append({
             "opponent": opponent_id,
             "result": result,
+            "match_id": match_id,
             "reflection": reflection or {},
         })
         if len(self.match_history) > 200:
