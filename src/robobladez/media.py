@@ -35,7 +35,12 @@ ASPECT_RATIOS = ("16:9", "9:16", "1:1", "4:5", "5:4")
 
 @dataclass
 class ShotSpec:
-    """Canonical, schema-valid shot specification (templates/shot-spec.schema.json)."""
+    """Canonical, schema-valid shot specification (ShotSpec v2, rmdev2 Phase 14).
+
+    v2 adds basis_event_ids (canonical event references), subjects (entry
+    snapshots + visual assets), state (first/last control frames), and control
+    (preferred/fallback route).
+    """
     shot_id: str
     project: str = "robobladez"
     canonicality: str = "CANONICAL_EVENT"
@@ -48,6 +53,10 @@ class ShotSpec:
     entity_versions: list[str] = field(default_factory=list)
     environment_version: str | None = None
     event_ids: list[str] = field(default_factory=list)
+    basis_event_ids: list[str] = field(default_factory=list)   # v2: canonical event refs
+    subjects: list[dict[str, Any]] = field(default_factory=list)  # v2: entry snapshots
+    state: dict[str, Any] = field(default_factory=dict)        # v2: first/last/guide frames
+    control: dict[str, str] = field(default_factory=dict)      # v2: {preferred, fallback}
     audio: dict[str, Any] = field(default_factory=dict)
     camera: dict[str, Any] = field(default_factory=dict)
     references: list[dict[str, Any]] = field(default_factory=list)
@@ -63,7 +72,8 @@ class ShotSpec:
             "project": self.project, "canonicality": self.canonicality,
             "entity_versions": self.entity_versions,
             "environment_version": self.environment_version,
-            "event_ids": self.event_ids, "duration_s": self.duration_s,
+            "event_ids": self.event_ids, "basis_event_ids": self.basis_event_ids,
+            "duration_s": self.duration_s,
             "fps": self.fps, "aspect_ratio": self.aspect_ratio,
             "control_mode": self.control_mode, "constraints": self.constraints,
         }
@@ -75,8 +85,7 @@ class ShotSpec:
 @dataclass
 class RenderRequest:
     shot_spec_uri: str
-    renderer_family: str = "ltx"
-    renderer_version: str = "2.3"
+    renderer_profile_id: str = "ltx-2.3-draft"  # resolves to an immutable RendererManifest
     profile: str = "draft"   # draft|final|retake|control-heavy|audio-driven
 
     def to_dict(self) -> dict[str, Any]:
@@ -167,6 +176,10 @@ def build_shot_spec(*, shot_id: str, project: str = "robobladez",
                     entity_versions: list[str] | None = None,
                     environment_version: str | None = None,
                     event_ids: list[str] | None = None,
+                    basis_event_ids: list[str] | None = None,
+                    subjects: list[dict] | None = None,
+                    state: dict | None = None,
+                    control: dict | None = None,
                     audio: dict[str, Any] | None = None,
                     camera: dict[str, Any] | None = None,
                     references: list[dict[str, Any]] | None = None,
@@ -181,9 +194,41 @@ def build_shot_spec(*, shot_id: str, project: str = "robobladez",
         prompt=prompt, duration_s=duration_s, aspect_ratio=aspect_ratio,
         constraints=constraints or [], entity_versions=entity_versions or [],
         environment_version=environment_version, event_ids=event_ids or [],
+        basis_event_ids=basis_event_ids or [], subjects=subjects or [],
+        state=state or {}, control=control or {},
         audio=audio or {}, camera=camera or {}, references=references or [],
         control_mode=mode, qa=qa or [],
     )
+
+
+class ControlPlanner:
+    """Pick the least-generative control route that solves the shot (rmdev2 Phase 15).
+
+    Keeps the model on the most-constrained route possible: loose establishing ->
+    T2V/I2V; exact trajectory -> FIRST_LAST/KEYFRAME; failed region -> RETAKE.
+    """
+
+    def plan(self, *, canonicality: str, shot_class: str,
+             has_basis_events: bool = False, has_control_frames: bool = False,
+             failed_region: bool = False) -> tuple[str, str]:
+        """Return (preferred, fallback) control modes."""
+        if failed_region:
+            return "RETAKE", "RETAKE"
+        if shot_class == "establish_arena":
+            return "T2V", "I2V"
+        if shot_class == "competitor_intro":
+            return "I2V", "I2V"
+        if shot_class == "daimon_manifestation":
+            return "I2V", "KEYFRAME"
+        if shot_class == "battle_event":
+            if has_control_frames:
+                return "FIRST_LAST", "KEYFRAME"
+            if has_basis_events:
+                return "KEYFRAME", "I2V"
+            return "I2V", "T2V"
+        if shot_class == "round_result":
+            return "RETAKE", "KEYFRAME"
+        return "T2V", "I2V"
 
 
 # ---------------------------------------------------------------------------
@@ -261,24 +306,26 @@ class RenderQueue:
 
 def simulate_render(shot: ShotSpec, job: RenderJob,
                     manifest: RendererManifest | None = None) -> RenderArtifact:
-    """Simulate a render WITHOUT calling LTX.
+    """Simulate a render WITHOUT calling LTX (mock backend).
 
     Produces a deterministic, canonical RenderArtifact (uri + content digest).
     This is the CPU-side substitute so the whole media pipeline can be validated
-    offline; a real backend maps ShotSpec -> LTX later.
+    offline; a real backend maps ShotSpec -> LTX later. The digest here is the
+    shot's canonical content digest (protocol binding), NOT real footage bytes.
     """
     manifest = manifest or RendererManifest(seed=job.seed, profile=job.request.profile)
     uri = f"mock://{manifest.renderer_family}/{job.request.profile}/{shot.shot_id}.mp4"
-    digest = shot.digest()  # canonical shot content hash
+    digest = shot.digest()  # protocol binding: mock claims it rendered exactly this spec
     return RenderArtifact(job_id=job.job_id, shot_id=shot.shot_id, uri=uri, digest=digest)
 
 
-def run_qa(shot: ShotSpec, artifact: RenderArtifact, expected_winner: str | None = None,
-           replay_event_ids: list[str] | None = None) -> QAVerdict:
-    """Deterministic QA against canonical constraints (no vision model needed).
+def binding_qa(shot: ShotSpec, artifact: RenderArtifact, expected_winner: str | None = None,
+               replay_event_ids: list[str] | None = None) -> QAVerdict:
+    """Binding QA (rmreview #14): does the artifact claim the right canonical spec?
 
-    A shot PASSES if its constraints are internally consistent and, when a
-    canonical winner/event context is supplied, the shot does not contradict it.
+    This is PROTOCOL QA, not media QA. It verifies identity/commitment
+    (digest, winner constraint, event ids) — NOT whether rendered footage
+    actually obeys them. Real footage QA is VisualQA (requires the renderer).
     """
     failures: list[str] = []
     passed: list[str] = []
@@ -286,19 +333,45 @@ def run_qa(shot: ShotSpec, artifact: RenderArtifact, expected_winner: str | None
         failures.append("artifact digest does not match shot canonical content")
     else:
         passed.append("artifact bound to shot canonical content")
-    # Canonicality discipline: CANONICAL_EVENT shots must carry winner constraint.
     if shot.canonicality == "CANONICAL_EVENT":
         has_winner = any("winner" in c for c in shot.constraints)
         if not has_winner:
             failures.append("CANONICAL_EVENT shot missing winner constraint")
         else:
             passed.append("winner constraint present")
-    if expected_winner is not None:
-        # Event ordering: a canonical shot referencing a later event must not
-        # contradict the resolved winner (here we only check it's referenced).
-        passed.append("winner context respected")
+    # Real winner check: only CANONICAL_EVENT shots must carry a winner
+    # constraint that matches expected_winner (RECONSTRUCTION shots don't
+    # imply an outcome).
+    if expected_winner is not None and shot.canonicality == "CANONICAL_EVENT":
+        winner_ok = any(expected_winner in c for c in shot.constraints)
+        if not winner_ok:
+            failures.append(f"shot winner constraint contradicts expected winner {expected_winner}")
+        else:
+            passed.append(f"winner context verified ({expected_winner})")
+    if replay_event_ids is not None:
+        for eid in replay_event_ids:
+            if eid not in shot.event_ids:
+                failures.append(f"shot missing canonical event {eid}")
+                break
+        else:
+            passed.append("shot references canonical events")
     return QAVerdict(shot_id=shot.shot_id, pass_=not failures,
                      failures=failures, passed_checks=passed)
+
+
+def visual_qa(shot: ShotSpec, artifact: RenderArtifact) -> QAVerdict:
+    """Visual QA interface (rmreview #14/#15).
+
+    Evaluates whether rendered FOOTAGE actually satisfies the shot: identity
+    preserved, correct competitor count, event order, result, arena, effect
+    placement. Requires access to rendered frames/vision (not available with a
+    mock renderer). Returns NOT_VERIFIED so a semantic pass is never faked.
+    """
+    return QAVerdict(
+        shot_id=shot.shot_id, pass_=False,
+        failures=["visual QA not executed: mock renderer provides no footage"],
+        passed_checks=[],
+    )
 
 
 def produce_episode(shots: list[ShotSpec], winner: str | None = None,
@@ -315,16 +388,18 @@ def produce_episode(shots: list[ShotSpec], winner: str | None = None,
     for shot in shots:
         job = queue.enqueue(shot, profile=profiles, seed=seed)
         art = simulate_render(shot, job)
-        verdict = run_qa(shot, art, expected_winner=winner)
+        verdict = binding_qa(shot, art, expected_winner=winner)
         queue.record_verdict(verdict)
         variants = []
         for asp in reframe_aspects:
             v = queue.reframe(art, asp)
             variants.append(v.to_dict())
         outputs.append({"shot": shot.to_dict(), "job": job.to_dict(),
-                        "artifact": art.to_dict(), "qa": verdict.to_dict(),
+                        "artifact": art.to_dict(),
+                        "binding_qa": verdict.to_dict(),
+                        "visual_qa": visual_qa(shot, art).to_dict(),
                         "variants": variants})
     return {"episode_winner": winner, "shots": len(shots),
-            "accepted": sum(1 for o in outputs if o["qa"]["pass"]),
-            "rejected": sum(1 for o in outputs if not o["qa"]["pass"]),
+            "accepted": sum(1 for o in outputs if o["binding_qa"]["pass"]),
+            "rejected": sum(1 for o in outputs if not o["binding_qa"]["pass"]),
             "outputs": outputs}

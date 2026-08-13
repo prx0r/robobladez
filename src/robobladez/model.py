@@ -154,6 +154,9 @@ class MatchResult:
     wins: dict[str, int]
     winner: str | None
     replay_digest: str = ""
+    # Canonical binding of the battle-self program (rmreview P0.2).
+    # blade_id -> {reincarnation_id, canonical_ast_sha256, commitment, compute_class}
+    reincarnation_bindings: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

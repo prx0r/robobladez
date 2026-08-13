@@ -2,7 +2,7 @@ import unittest
 from robobladez.media import (
     ShotSpec, RenderRequest, RenderJob, RenderArtifact, QAVerdict, RendererManifest,
     build_shot_spec, shot_class_for, SHOT_CLASS_CONTROL, CONTROL_MODES,
-    RenderQueue, simulate_render, run_qa, produce_episode,
+    RenderQueue, simulate_render, binding_qa, visual_qa, produce_episode,
 )
 from robobladez.shots import compile_shots
 
@@ -76,7 +76,7 @@ class MediaPipelineTests(unittest.TestCase):
     def test_qa_rejects_broken_digest(self):
         spec = build_shot_spec(shot_id="s3", shot_class="battle_event")
         bad_art = RenderArtifact(job_id="j", shot_id="s3", uri="u", digest="WRONG")
-        v = run_qa(spec, bad_art)
+        v = binding_qa(spec, bad_art)
         self.assertFalse(v.pass_)
         self.assertTrue(any("digest" in f for f in v.failures))
 

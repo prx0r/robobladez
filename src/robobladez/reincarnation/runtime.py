@@ -29,19 +29,54 @@ class ReincarnationRuntime:
         self.ability_ready: dict[str, bool] = {}
 
     def _obs_ctx(self, obs) -> dict[str, float]:
-        """Map an Observation into named numeric context used by conditions."""
-        opp_d = ((obs.opponent_pos - obs.self_pos).norm() if hasattr(obs, "self_pos") else 0)
-        self_speed = obs.self_vel.norm() if hasattr(obs, "self_vel") else 0.0
-        return {
-            "distance": opp_d,
-            "closing_speed": max(0.0, self_speed),
-            "time": self.tick * getattr(obs, "_dt", 1 / 240),
-            "self_energy": getattr(obs, "self_energy", 0.0),
-            "self_integrity": getattr(obs, "self_integrity", 100.0),
-            "opponent_energy": getattr(obs, "opponent_energy", 0.0),
-            "opponent_integrity": getattr(obs, "opponent_integrity", 100.0),
-            "arena_radius": getattr(obs, "arena_radius", 0.42),
+        """Map an Observation into named numeric context used by conditions.
+
+        Telemetry vocabulary (rmdev2 Phase 1A): closing_speed is TRUE relative
+        closing velocity (positive when approaching), plus tangential relative
+        speed, radius/energy/integrity fractions, spins, and time.
+        """
+        dt = getattr(obs, "_dt", 1 / 240)
+        if hasattr(obs, "self_pos"):
+            delta = obs.opponent_pos - obs.self_pos
+            dist = delta.norm()
+            closing, rel_tang = 0.0, 0.0
+            if dist > 1e-12:
+                unit = delta.unit()
+                rel_vel = obs.opponent_vel - obs.self_vel
+                closing = -rel_vel.dot(unit)            # + = approaching
+                rel_tang = abs(rel_vel.dot(unit.perp()))  # tangential relative speed
+            self_rad = obs.self_pos.norm()
+            opp_rad = obs.opponent_pos.norm()
+            arena_r = obs.arena_radius
+        else:
+            dist, closing, rel_tang = 0.0, 0.0, 0.0
+            self_rad = opp_rad = 0.0
+            arena_r = 0.42
+        self_energy = getattr(obs, "self_energy", 0.0)
+        opp_energy = getattr(obs, "opponent_energy", 0.0)
+        self_integrity = getattr(obs, "self_integrity", 100.0)
+        opp_integrity = getattr(obs, "opponent_integrity", 100.0)
+        # Fractions normalized to [0,1]; defaults chosen so unused units are neutral.
+        ctx = {
+            "distance": dist,
+            "closing_speed": closing,
+            "relative_tangential_speed": rel_tang,
+            "self_radius_fraction": self_rad / arena_r if arena_r else 0.0,
+            "opponent_radius_fraction": opp_rad / arena_r if arena_r else 0.0,
+            "self_energy_fraction": min(1.0, self_energy / 100.0),
+            "opponent_energy_fraction": min(1.0, opp_energy / 100.0),
+            "self_integrity_fraction": min(1.0, self_integrity / 100.0),
+            "opponent_integrity_fraction": min(1.0, opp_integrity / 100.0),
+            "self_spin": getattr(obs, "self_omega", 0.0),
+            "opponent_spin": getattr(obs, "opponent_omega", 0.0),
+            "time": self.tick * dt,
+            "round_time": getattr(obs, "round_no", 1) * 0.0,  # per-round timer set below
+            "arena_radius": arena_r,
         }
+        # Expose bounded memory slots to condition expressions.
+        for name, val in self.memory.items():
+            ctx[f"memory.{name}"] = val
+        return ctx
 
     def decide(self, obs) -> Action:
         """Evaluate one tick: apply current state's action, evaluate transitions."""
@@ -56,11 +91,15 @@ class ReincarnationRuntime:
             boost=float(action_spec.get("boost", 0.0)),
         ).clamped()
 
-        # Update bounded memory slots from the state spec if declared.
+        # Bounded memory ops: SET and ADD (rmart P0.4).
         for mem in action_spec.get("memory", []):
-            name, val = mem.get("name"), mem.get("value")
-            if name in self.memory:
-                self.memory[name] = self._clamp_mem(name, self.memory[name] + val)
+            name, op, val = mem.get("name"), mem.get("op", "add"), mem.get("value", 0)
+            if name not in self.memory:
+                continue
+            if op == "set":
+                self.memory[name] = self._clamp_mem(name, float(val))
+            elif op == "add":
+                self.memory[name] = self._clamp_mem(name, self.memory[name] + float(val))
 
         # Evaluate transitions in order; first satisfied wins.
         for t in state.get("transitions", []):

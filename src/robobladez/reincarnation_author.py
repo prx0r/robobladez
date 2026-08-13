@@ -1,23 +1,46 @@
-"""Reincarnation authoring (rm7/rm8).
+"""Reincarnation authoring (rm7/rm8/rmdev2 Phase 4).
 
-A persistent Agent, given the mechanical report + opponent model, authors a
-RBZ-RC-1 Reincarnation: a bounded state machine (states + transitions +
-continuous controls + memory). This is the ACTUAL mechanism that fights —
-not a pick from a hard-coded Python policy zoo.
+A persistent Agent, given match context, authors a RBZ-RC-1 Reincarnation: a
+bounded state machine (states + transitions + continuous controls + memory).
+This is the ACTUAL mechanism that fights — not a pick from a policy zoo.
 
-The author produces a ReincarnationManifest, which is validated, normalized,
-committed, and executed by ReincarnationRuntime. The LLM/persistent-Agent does
-NOT get queried per tick.
+The author interface is `ReincarnationAuthor.author(context) -> Manifest`.
+`BaselineReincarnationAuthor` is the deterministic MVP heuristic compiler over
+the mechanical report. Later `LLMReincarnationAuthor` / `EvolutionaryAuthor`
+implement the same contract. The LLM/persistent-Agent is NEVER queried per tick.
 """
 from __future__ import annotations
-from typing import Any
+from dataclasses import dataclass, field, asdict
+from typing import Any, Protocol
 
 from .mechanical import MechanicalMatchupReport
 from .reincarnation import ReincarnationManifest, MemorySlot, ReincarnationRuntime
 
 
-def _control_profile(report: MechanicalMatchupReport, me: str, opponent: str) -> dict:
+@dataclass
+class ReincarnationContext:
+    """Everything a persistent Agent may use to author its battle-self (rmdev2 Phase 4)."""
+    agent_id: str
+    mechanical_report: MechanicalMatchupReport | None = None
+    opponent_public_record: dict = field(default_factory=dict)
+    opponent_model: dict = field(default_factory=dict)
+    previous_reincarnations: list[dict] = field(default_factory=list)
+    reflections: list[dict] = field(default_factory=list)
+    daimon_advice: str = ""
+    human_mentor_messages: list[str] = field(default_factory=list)
+    ruleset: str = "R1"
+    body_capabilities: dict = field(default_factory=dict)
+    compute_class: str = "C1"
+
+
+class ReincarnationAuthor(Protocol):
+    def author(self, context: ReincarnationContext) -> ReincarnationManifest: ...
+
+
+def _control_profile(report: MechanicalMatchupReport | None, me: str, opponent: str) -> dict:
     """Derive a control bias from the mechanical report (advantages/vulnerabilities)."""
+    if report is None:
+        return {"radial": 0.3, "tangential": 0.2, "torque": 0.0, "boost": 0.3}
     my = report.per_body.get(me, {})
     opp = report.per_body.get(opponent, {})
     profile = {
@@ -43,14 +66,30 @@ def _control_profile(report: MechanicalMatchupReport, me: str, opponent: str) ->
     return profile
 
 
-class ReincarnationAuthor:
-    """Deterministically authors a RBZ-RC-1 reincarnation from match context."""
+class BaselineReincarnationAuthor:
+    """Deterministic MVP heuristic compiler (rmdev2 Phase 4).
+
+    Reads the mechanical report and authors a fixed-shape RBZ-RC-1 state machine.
+    This is NOT yet "the AI rewrites itself" — it is the reference MVP author.
+    """
 
     def __init__(self, agent_version: str, author: str = ""):
         self.agent_version = agent_version
         self.author = author
 
-    def reincarnate(self, report: MechanicalMatchupReport, me: str, opponent: str,
+    def author(self, context: ReincarnationContext,
+               target_match: str = "", reincarnation_id: str = "",
+               parent_id: str = "") -> ReincarnationManifest:
+        report = context.mechanical_report
+        me = context.agent_id
+        opponent = list(context.opponent_public_record.get("_opponent", [""]))[0] if \
+            context.opponent_public_record.get("_opponent") else ""
+        return self.reincarnate(report, me, opponent,
+                                target_match=target_match,
+                                reincarnation_id=reincarnation_id,
+                                parent_id=parent_id)
+
+    def reincarnate(self, report: MechanicalMatchupReport | None, me: str, opponent: str,
                     target_match: str = "", reincarnation_id: str = "",
                     parent_id: str = "") -> ReincarnationManifest:
         ctrl = _control_profile(report, me, opponent)
@@ -70,18 +109,23 @@ class ReincarnationAuthor:
                      "to": "pressure"},
                     {"if": {"op": "lt", "lhs": "distance", "threshold": 0.35},
                      "to": "orbit"},
+                    # Memory-driven adaptation: once pressure has been seen
+                    # enough, prefer a more evasive opening next time.
+                    {"if": {"op": "gte", "lhs": "memory.pressure_seen",
+                            "threshold": 3.0}, "to": "orbit"},
                 ],
             },
             {
                 "id": "pressure",
                 "action": {"radial": min(1.0, ctrl["radial"] + 0.3),
                            "tangential": min(1.0, ctrl["tangential"] + 0.2),
-                           "torque": 0.05, "boost": min(1.0, ctrl["boost"] + 0.2)},
+                           "torque": 0.05, "boost": min(1.0, ctrl["boost"] + 0.2),
+                           "memory": [{"name": "pressure_seen", "op": "add", "value": 1}]},
                 "transitions": [
                     {"if": {"op": "gt", "lhs": "distance", "threshold": 0.30},
                      "to": "observe"},
-                    {"if": {"op": "gt", "lhs": "self_integrity", "threshold": 0.0},
-                     "to": "recover"},  # reached only if integrity low via memory
+                    {"if": {"op": "lt", "lhs": "self_integrity", "threshold": 30.0},
+                     "to": "recover"},
                 ],
             },
             {

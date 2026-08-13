@@ -210,6 +210,32 @@ class AgentState:
     match_history: list[dict[str, Any]] = field(default_factory=list)
     interactions: list[dict[str, Any]] = field(default_factory=list)  # HumanInteractionEvent
     goals: list[str] = field(default_factory=list)
+    # Reincarnation lineage (rmdev2 Phase 5): boris-r001, r002, ...
+    reincarnation_counter: int = 0
+    reincarnation_history: list[dict[str, Any]] = field(default_factory=list)
+    current_reincarnation_id: str = ""
+
+    def next_reincarnation_id(self) -> str:
+        """Return the next lineage id (boris-r001, boris-r002, ...)."""
+        self.reincarnation_counter += 1
+        self.current_reincarnation_id = f"{self.agent_id}-r{self.reincarnation_counter:03d}"
+        return self.current_reincarnation_id
+
+    def record_reincarnation(self, *, reincarnation_id: str, parent: str = "",
+                             target_opponent: str = "", strategy_thesis: str = "",
+                             manifest_digest: str = "", match_result: str | None = None,
+                             reflection: dict | None = None) -> None:
+        """Append a reincarnation to the agent's lineage (append-only)."""
+        self.reincarnation_history.append({
+            "reincarnation_id": reincarnation_id,
+            "parent": parent,
+            "target_opponent": target_opponent,
+            "strategy_thesis": strategy_thesis,
+            "manifest_digest": manifest_digest,
+            "match_result": match_result,
+            "reflection": reflection or {},
+        })
+        self.current_reincarnation_id = reincarnation_id
 
     def remember_match(self, opponent_id: str, match_affinities: dict[str, float],
                        opponent_daimon: "DaimonState", result: str | None,
@@ -248,6 +274,9 @@ class AgentState:
             "match_count": len(self.match_history),
             "interaction_count": len(self.interactions),
             "goals": self.goals,
+            "reincarnation_counter": self.reincarnation_counter,
+            "current_reincarnation_id": self.current_reincarnation_id,
+            "reincarnation_history_count": len(self.reincarnation_history),
             "status": "NARRATIVE_PROJECTION",
         }
 

@@ -201,17 +201,61 @@ Status enum:
   canonical_status: [ANALYTICS, INFRA]
 
 - id: REINCARNATION_COMPILER
-  status: IMPLEMENTED
+  status: VERIFIED
   implementation: src/robobladez/reincarnation/
-  tests: tests/test_reincarnation.py
+  tests: tests/test_reincarnation.py, tests/test_adversarial.py
   canonical_status: [GAMEPLAY, INFRA]
   version: RBZ-RC-1
+  notes: corrected integrity transition, relative closing_speed, memory-readable
+         conditions (SET/ADD); AST digest pinned in MatchResult.reincarnation_bindings
 
 - id: REINCARNATION_STORAGE
   status: IMPLEMENTED
   implementation: src/robobladez/reincarnation/lineage.py
   tests: tests/test_reincarnation.py
   canonical_status: [INFRA]
+
+- id: REINCARNATION_LINEAGE
+  status: IMPLEMENTED
+  implementation: src/robobladez/agent.py (reincarnation_history)
+  canonical_status: [ANALYTICS, INFRA]
+  notes: AgentState tracks r001/r002/...; parent links; recorded per match
+
+- id: COMPETITION_ENTRY
+  status: IMPLEMENTED
+  implementation: src/robobladez/competition.py
+  canonical_status: [INFRA]
+  notes: CompetitionEntry + immutable EntrySnapshot (agent/body/daimon/visual versions)
+
+- id: EXECUTION_MANIFEST
+  status: IMPLEMENTED
+  implementation: src/robobladez/competition.py (MatchExecutionManifest)
+  canonical_status: [INFRA]
+  notes: execution_digest pins engine/arena/entries/reincarnations/seed; EXACT MATCH
+
+- id: CANONICAL_EVENT
+  status: IMPLEMENTED
+  implementation: src/robobladez/canonical.py
+  canonical_status: [INFRA]
+  notes: first-class event IDs (rbz://match/...), pre/post states
+
+- id: SIGNIFICANCE_DETECTION
+  status: IMPLEMENTED
+  implementation: src/robobladez/significance.py
+  canonical_status: [ANALYTICS, NARRATIVE]
+  notes: selects important canonical events; beats reference basis_event_ids
+
+- id: CONTROL_FRAMES
+  status: IMPLEMENTED
+  implementation: src/robobladez/control_frames.py
+  canonical_status: [NARRATIVE]
+  notes: deterministic first/last control plates from event pre/post state
+
+- id: MVP_VERTICAL_SLICE
+  status: IMPLEMENTED
+  implementation: src/robobladez/mvp.py
+  canonical_status: [INFRA]
+  notes: one-command `robobladez mvp` -> complete traceable artifact tree
 
 ## Progression / League / Canon / Media (planned)
 - id: BODY_EVOLUTION
@@ -261,9 +305,16 @@ Status enum:
   implementation: src/robobladez/assets.py
   canonical_status: [INFRA, NARRATIVE]
   notes: VisualSpec/VisualAsset/StyleProfile/AssetLibrary/AssetResolver/VisualForge/
-         ShotAssetBundle; canonical vs editorial; generate-once-reuse;
-         image<->mechanical version coupling
+         ShotAssetBundle; mechanical_version-aware reuse (R17!=R18); typed resolver;
+         conflict detection; manifest vs content digest; mock backend labeled
   references: docs/VISUAL_ASSETS.md
+
+- id: MEDIA_QA
+  status: IMPLEMENTED
+  implementation: src/robobladez/media.py
+  canonical_status: [NARRATIVE, INFRA]
+  notes: binding_qa (protocol/identity) vs visual_qa (footage, not faked);
+         winner constraint actually verified for CANONICAL_EVENT shots
 
 - id: SHOT_GRAPH
   status: IMPLEMENTED

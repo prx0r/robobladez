@@ -1,69 +1,55 @@
 # RoboBladez
 
-Two things live here:
+A deterministic AI-vs-AI spinning-top competition engine plus a canon-building media
+pipeline. The defining mechanic: a persistent Agent **writes its own sealed executable
+battle-self (a RBZ-RC-1 reincarnation)** each match, that self fights deterministically,
+and the result becomes immutable canon that changes the Agent — then canonical
+events/visual assets drive LTX (replaceable backend).
 
-## 1. Arcade game (`index.html`)
-
-A tiny 2D arena game: pilot a spinning-blade robot and slice incoming drone waves. Pure HTML5 Canvas — no dependencies, no build step.
-
-```bash
-python3 -m http.server 8000
-# open http://localhost:8000
-```
-
-**Controls:** WASD/Arrows move · mouse aims blades · Space/Shift dash.
-
-## 2. Deterministic AI-competition engine — **MVP v2** (`src/robobladez`)
-
-A deterministic, physically motivated 2D spinning-top competition engine whose canonical match history can later be rendered as a serialized LTX show. Pure Python stdlib — **no numpy, no pybullet, no GPU, ~50MB RAM**. The only GPU step (LTX rendering) is an external, optional adapter.
+CPU-first modular monolith. **No numpy, no pybullet, no GPU, no external services** for
+the core. Pure Python stdlib.
 
 > The simulation decides what happened. The media layer decides how it is shown.
 
-### v2 what's implemented
+Also contains a small HTML5 arcade game in `index.html` (spinning-blade arena, no deps).
 
-- deterministic seeded simulation + replay-digest verification
-- real rigid-disk planar physics: mass, radius, moment of inertia, angular spin, spin drag, bowl restoring force, disk-disk contact impulses with tangential friction + spin coupling, ring-out / spin-out / burst / time-draw terminals
-- simultaneous sealed policy decisions with code/config fingerprinting (`manifest`)
-- **mechanical baseline mode** (passive bodies) separate from strategic matches
-- best-of-N with honest draw/tie handling
-- SQLite canon store (digest-verified, append-only semantics)
-- raw behavioral phenotype + *separate, non-causal* daimon projection
-- round-robin league
-- deterministic story + LTX shot specs
-- **audit harness** (`robobladez audit`)
-- **mechanical baseline** system: neutral passive runs produce a `MechanicalMatchupReport` (win probability, advantages, vulnerabilities) before strategy
-- **two-phase `battle` protocol**: mechanical reveal → sealed strategic avatar → best-of-N (the core RoboBladez mechanic)
-- **projection/evolution layer**: persistent `AgentState` (EMA daimon identity with naming + manifestation stages), `SignatureDetector` (measured signature moves), `PostMatchReflection` + opponent models — all non-causal, per the Constitution
-- policy zoo (12 archetypes) + body zoo (8 archetypes)
-- matchup matrix runner + non-transitivity/meta analyzer
-
-### The Constitution
-
-`docs/CONSTITUTION.md` is the hard contract: the engine owns truth, matches are reproducible from versioned inputs, actions are simultaneous, policies are sealed mid-match, canon is append-only, the cinematic layer never reverses an outcome, and **nothing is called "emergent" unless measured from interaction**.
-
-### Run
+## Quick start
 
 ```bash
 export PYTHONPATH=src
-python3 -m robobladez.cli demo --out ./out     # baseline + strategic match
-python3 -m robobladez.cli battle --out ./out   # two-phase: mechanical reveal -> sealed avatars
-python3 -m robobladez.cli audit --seeds 250    # fuzz/energy/canon verification
-python3 -m robobladez.cli season --out ./out   # 3-agent evolving season
-python3 scripts/run_matrix.py --seeds 5 --out matrix.tsv  # matchup matrix
-python3 -m robobladez.meta matrix.tsv          # non-transitivity diagnosis
+python -m robobladez.cli mvp --out out/mvp --seed 2026 --rounds 3   # one vertical slice
+python -m robobladez.cli simulate --out out/sim                     # full stack, no LTX
+python -m robobladez.cli demo --out ./out                           # single match
+python -m robobladez.cli audit --seeds 250                          # fuzz/energy/canon
+python -m robobladez.cli season --out ./out                         # 3-agent season
 ```
 
-Tests:
+Tests (67, all fast, no LTX/network):
 
 ```bash
-python3 -m unittest discover -s tests -v
+python -m unittest discover -s tests -v
 ```
 
-### View a replay
+View a replay: open `viewer/index.html` and load a `match.json`.
 
-Open `viewer/index.html` in a browser and load a `match.json`. No build, no deps.
+## The one proof of the MVP
 
-### Docs
+```bash
+python -m robobladez.cli mvp --out out/mvp --seed 2026 --rounds 3
+```
 
-See `docs/` — CONSTITUTION, GAMEPLAY, PHYSICS_SCOPE, BUILD_NEXT, EXTERNAL_INFRA, PEER_REVIEW_V1, GAMEPLAY_ORIGIN, SOURCE_COVERAGE. Raw historical source material is archived separately (not in this repo); the distilled design law lives in `docs/GAMEPLAY_ORIGIN.md` and the coverage map in `docs/SOURCE_COVERAGE.md`.
+produces a complete, internally-consistent artifact tree (`competition/`, `canon/`,
+`visual/`, `story/`, `shots/`, `controls/`, `renders/`, `qa/`, `episode/`, `RUN.json`)
+where every artifact links to its parents. If that tree exists, the MVP exists.
 
+## New to the project?
+
+Read **`docs/HANDOVER.md`** — it contains the repository map, the live/legacy/unwired
+audit, the doc index, and test discipline.
+
+## Docs
+
+`docs/` — HANDOVER, ARCHITECTURE, MVP, ROADMAP, CONSTITUTION, TESTING, MEDIA_PIPELINE,
+MEDIA_STRATEGY, VISUAL_ASSETS, GAMEPLAY_ORIGIN, GAMEPLAY, PHYSICS_SCOPE, plus
+`docs/mechanisms/` (29 mechanism specs + `index.yaml` status) and `docs/ltx/`,
+`docs/ltx-2.5/` (LTX research packs). v1-era docs live in `docs/archive/`.

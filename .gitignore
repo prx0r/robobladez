@@ -21,3 +21,7 @@ source-material/
 # Local canon databases (regenerable)
 canon.sqlite3
 *.sqlite3
+
+# MVP/simulate output trees
+/out/mvp/
+/mvp/

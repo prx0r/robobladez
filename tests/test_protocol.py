@@ -2,7 +2,7 @@ import unittest, json
 from robobladez.agent import AgentState, DaimonState, agent_snapshot
 from robobladez.mechanical import mechanical_report
 from robobladez.battle import run_battle
-from robobladez.reincarnation_author import ReincarnationAuthor
+from robobladez.reincarnation_author import BaselineReincarnationAuthor
 from robobladez.zoo import make_body
 from robobladez.model import ArenaSpec
 
@@ -45,7 +45,7 @@ class BattleTests(unittest.TestCase):
     def test_reincarnation_author(self):
         report = mechanical_report(make_body("balanced"), make_body("heavy"),
                                    ArenaSpec(max_seconds=2), runs=3, rounds=1)
-        author = ReincarnationAuthor(agent_version="boris@1", author="boris")
+        author = BaselineReincarnationAuthor(agent_version="boris@1", author="boris")
         man = author.reincarnate(report, "balanced", "heavy")
         self.assertEqual(man.format, "RBZ-RC-1")
         self.assertGreaterEqual(len(man.states), 2)

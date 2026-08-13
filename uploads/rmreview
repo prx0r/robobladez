@@ -1,0 +1,1798 @@
+This is a strong batch, but the review found **four major places where the implementation currently overstates what has actually been proven**:
+
+1. **Reincarnation is in the battle path, but it is not yet genuine Agent-authored reincarnation.**
+2. **The exact reincarnation program is not actually pinned inside the canonical `MatchResult`.**
+3. **The visual system records `mechanical_version`, but reuse currently ignores it—so body evolution can silently reuse the wrong image.**
+4. **The end-to-end visual pipeline does not actually exercise the new AssetLibrary/VisualForge path yet.**
+
+Those are fixable without redesigning the architecture.
+
+## Overall verdict
+
+`2bfe2aa` is the point where RoboBladez stops looking like a collection of adjacent systems and begins looking like **one coherent executable architecture**:
+
+```text
+PERSISTENT AGENT
+→ mechanical reveal
+→ reincarnation
+→ sealed deterministic battle
+→ canonical result
+→ character/daimon evolution
+→ story
+→ shot graph
+→ asset resolution
+→ renderer
+→ QA
+```
+
+The architectural direction is now very strong.
+
+My scores:
+
+| Area                              |                          Assessment |
+| --------------------------------- | ----------------------------------: |
+| Core game thesis                  |                          **9.5/10** |
+| Reincarnation architecture        |   **9/10 design, 5/10 realization** |
+| Deterministic battle kernel       |                          **8.5/10** |
+| Commit/reveal integrity           |                            **5/10** |
+| Character/daimon transactionality |                          **8.5/10** |
+| Visual asset ontology             | **9/10 design, 5.5/10 enforcement** |
+| Media architecture                |                            **8/10** |
+| Actual visual QA                  |                            **2/10** |
+| End-to-end wiring                 |                            **7/10** |
+| Ready for autonomous seasons      |                         **not yet** |
+
+I would **keep the commit** and do an integrity-hardening sequence next.
+
+---
+
+# 1. Reincarnation is finally on the real battle path — this is a major win
+
+This part is genuine.
+
+`run_battle()` now:
+
+```text
+mechanical_report
+↓
+ReincarnationAuthor.reincarnate()
+↓
+validate
+↓
+ReincarnationRuntime
+↓
+run_match()
+```
+
+and the runtime implements `decide(obs)`, so the state machine rather than `AggressivePolicy`/`CounterPolicy` is what the engine queries live.
+
+That means the architectural statement:
+
+> **the reincarnation fights**
+
+is now true.
+
+And the runtime is correctly continuous rather than turn-based:
+
+```text
+observation(t)
+↓
+current state
+↓
+continuous action
+↓
+transition evaluation
+↓
+physics
+↓
+observation(t+1)
+```
+
+That's probably the most important milestone in this batch.
+
+But there is a distinction we need to enforce sharply.
+
+---
+
+# P0.1 — this is not yet “the AI writes itself”
+
+`ReincarnationAuthor` is currently a deterministic hand-written compiler:
+
+```python
+if opponent slow:
+    boost = .7
+
+elif opponent low-spin:
+    tangential = .6
+
+elif opponent holds center:
+    orbit
+
+...
+```
+
+and then always emits essentially the same four-state architecture:
+
+```text
+OBSERVE
+PRESSURE
+ORBIT
+RECOVER
+```
+
+It does **not currently consume**:
+
+```text
+AgentState
+career memory
+opponent model
+previous reincarnation
+post-match reflection
+Daimon
+human coaching
+strategic hypotheses
+reincarnation lineage
+```
+
+despite those being the conceptual reason reincarnation exists.
+
+So this is currently:
+
+```text
+mechanical report
+→ deterministic heuristic compiler
+→ RBZ-RC-1
+```
+
+not yet:
+
+```text
+persistent AI intelligence
+→ reasons about opponent/history
+→ authors novel RBZ-RC-1 architecture
+```
+
+That's perfectly acceptable for MVP, but the docs should call it:
+
+> **reference reincarnation author / deterministic MVP author**
+
+rather than implying the persistent AI is already self-compiling.
+
+The next author interface should look more like:
+
+```text
+ReincarnationContext
+├ agent_snapshot
+├ mechanical_report
+├ opponent_model
+├ public opponent history
+├ own reincarnation lineage
+├ previous reflections
+├ Daimon advice
+├ human coaching events
+├ current body
+├ abilities
+├ ruleset
+└ compute budget
+```
+
+Then:
+
+```python
+author.reincarnate(context) -> ReincarnationManifest
+```
+
+The current author becomes:
+
+```text
+BaselineReincarnationAuthor
+```
+
+and later:
+
+```text
+LLMReincarnationAuthor
+EvolutionaryReincarnationAuthor
+HybridReincarnationAuthor
+```
+
+This is the defining mechanic, so this abstraction matters.
+
+---
+
+# P0.2 — there is an actual bug in the authored state machine
+
+This condition:
+
+```python
+{"op": "gt",
+ "lhs": "self_integrity",
+ "threshold": 0.0}
+→ recover
+```
+
+is commented as:
+
+> reached only if integrity low
+
+but it means:
+
+```text
+if integrity > 0
+```
+
+which is true almost the entire time the blade is alive.
+
+So once `pressure` is entered, unless the preceding distance transition wins, the machine immediately moves to `recover`.
+
+It presumably intended something like:
+
+```text
+self_integrity < 30
+```
+
+or an integrity fraction.
+
+This needs a direct regression test.
+
+---
+
+# P0.3 — `closing_speed` is not closing speed
+
+Runtime currently calculates:
+
+```python
+self_speed = obs.self_vel.norm()
+
+"closing_speed": max(0.0, self_speed)
+```
+
+That is just the competitor's absolute speed.
+
+Actual closing velocity should be something like:
+
+```text
+delta = opponent_pos - self_pos
+
+relative_velocity =
+    opponent_vel - self_vel
+
+closing_speed =
+    -dot(relative_velocity, normalize(delta))
+```
+
+You already implemented this correctly in `CounterPolicy`.
+
+This matters because eventually reincarnations will author conditions such as:
+
+```text
+if closing_speed > 0.7:
+```
+
+and right now that means something completely different from what the DSL name claims.
+
+---
+
+# P0.4 — reincarnation memory exists but effectively isn't part of the authored intelligence yet
+
+The author declares:
+
+```text
+pressure_seen
+```
+
+but none of the states write meaningful adaptive data into it and transition expressions can't read memory values anyway.
+
+So:
+
+```text
+bounded memory
+```
+
+exists structurally,
+
+but:
+
+```text
+memory-driven adaptation
+```
+
+doesn't really exist yet.
+
+This is important because your original reincarnation concept was not merely:
+
+> state machine.
+
+It was:
+
+> state machine + live memory + contingent response architecture.
+
+RBZ-RC-1 needs condition operands like:
+
+```text
+memory.pressure_seen
+memory.opening_class
+memory.contact_count
+memory.last_transition_tick
+```
+
+and probably memory operations:
+
+```text
+SET
+ADD
+EMA
+MAX
+MIN
+```
+
+all bounded and deterministic.
+
+---
+
+# 2. Biggest commit/reveal issue: the canonical match does not pin the actual reincarnation
+
+This is the most serious architectural integrity issue I found.
+
+You correctly implemented a reincarnation-specific commitment:
+
+```python
+reincarnation_commitment(manifest, nonce)
+```
+
+which hashes the executable payload.
+
+Excellent.
+
+But then `run_match()` independently creates the canonical policy manifests using generic:
+
+```python
+manifest(policy)
+```
+
+from `policy.py`.
+
+For `ReincarnationRuntime`, `manifest()` sees:
+
+```text
+class = ReincarnationRuntime
+config = runtime.public_config()
+code_sha256 = runtime-class source
+```
+
+And `public_config()` only exposes:
+
+```text
+format
+reincarnation_id
+compute_class
+initial_state
+```
+
+—not the states, transitions, memory, constants, etc.
+
+Therefore two completely different reincarnations can have identical:
+
+```text
+policy class
+reincarnation id
+compute class
+initial state
+```
+
+while containing completely different executable state machines.
+
+Yet the `MatchResult` generic policy commitment would not distinguish them.
+
+That's a **P0**.
+
+---
+
+# Correct solution
+
+The canonical match should contain:
+
+```text
+ReincarnationBinding
+├ reincarnation_id
+├ canonical_ast_sha256
+├ commitment
+├ compute_class
+├ compiler_version
+├ runtime_version
+└ reveal_uri / embedded AST
+```
+
+and:
+
+```text
+EXACT MATCH =
+EngineVersion
++ ArenaVersion
++ BodyA
++ BodyB
++ ReincarnationDigestA
++ ReincarnationDigestB
++ Seed
+```
+
+The existing `BattleAvatar.commitment` already points in this direction.
+
+But it needs to be part of:
+
+```text
+MatchResult
+replay digest
+canon record
+```
+
+not only the surrounding `BattleOutcome`.
+
+Otherwise your previous core guarantee:
+
+> exact inputs → exact match
+
+doesn't fully include the most important new input: **the battle-self program**.
+
+---
+
+# 3. Challenge nonce semantics need cleaning up
+
+Battle-level reincarnation commitment uses:
+
+```python
+nonce = f"{base_seed}|{spec_a.id}|{spec_b.id}"
+```
+
+while the engine independently uses:
+
+```python
+nonce = f"{match_id}|{seed}|{ENGINE_VERSION}"
+```
+
+for generic policy commitments.
+
+So there are currently two commitment protocols.
+
+That's unnecessary and potentially confusing.
+
+I'd have exactly one:
+
+```text
+MatchChallenge
+├ match_id
+├ ruleset_version
+├ arena_version
+├ body versions
+└ challenge_nonce
+```
+
+Agents submit:
+
+```text
+reincarnation_commitment
+```
+
+then the match begins.
+
+Afterward:
+
+```text
+manifest reveal
+→ recompute hash
+→ verify
+```
+
+One protocol. One audit trail.
+
+---
+
+# 4. Reincarnation lineage is not actually moving yet
+
+Every default battle currently calls:
+
+```python
+reincarnation_id=f"{agent_id}-r1"
+```
+
+So Boris can fight fifty matches and keep producing:
+
+```text
+boris-r1
+```
+
+The `parent_reincarnation_id` field exists in the author API but `run_battle()` doesn't supply it.
+
+That's contrary to one of the coolest parts of the design:
+
+```text
+BORIS
+├ R001
+├ R002
+├ R003
+...
+```
+
+The persistent Agent should maintain:
+
+```text
+current_reincarnation_version
+reincarnation_lineage
+```
+
+and each authored machine should say:
+
+```text
+reincarnation_id = boris-r027
+parent = boris-r026
+```
+
+That history will later be tremendously useful for:
+
+```text
+strategy evolution
+counter analysis
+commentary
+meta shifts
+Daimon development
+```
+
+---
+
+# 5. Transactional post-match evolution is now very good
+
+This section is much stronger.
+
+Both agents are snapshotted before mutation; both reflections derive from one shared pre-match epoch; Daimon snapshots are copied before updates; then both changes are committed.
+
+That closes a subtle determinism bug where:
+
+```text
+update A
+↓
+B observes already-mutated A
+```
+
+could make results order-dependent.
+
+I would preserve this pattern throughout the system:
+
+```text
+READ EPOCH
+↓
+derive all deltas
+↓
+COMMIT EPOCH+1
+```
+
+It's the right architecture for:
+
+```text
+Agent
+Daimon
+relationships
+rankings
+meta state
+```
+
+---
+
+# 6. Visual asset ontology is excellent
+
+Conceptually, `assets.py` is one of the strongest things in the batch.
+
+This distinction is exactly right:
+
+```text
+STRUCTURAL STATE
+!=
+VISUAL STATE
+```
+
+and:
+
+```text
+VisualSpec
+→ generation
+→ VisualAsset candidate
+→ canon approval
+→ downstream reuse
+```
+
+The right objects are there:
+
+```text
+VisualSpec
+VisualAsset
+StyleProfile
+AssetLibrary
+AssetResolver
+VisualForge
+ShotAssetBundle
+```
+
+This is the correct foundation.
+
+But several enforcement bugs currently undermine the promise.
+
+---
+
+# P0.5 — `mechanical_version` is recorded but ignored during reuse
+
+This is the largest asset bug.
+
+`VisualSpec` contains:
+
+```text
+mechanical_version
+```
+
+and `VisualAsset` stores it. Great.
+
+But:
+
+```python
+ensure_visual(spec, view)
+```
+
+checks:
+
+```python
+latest_canonical(
+    spec.entity_id,
+    spec.asset_type,
+    view
+)
+```
+
+and **does not check `mechanical_version`**.
+
+So:
+
+```text
+BORIS body R17
+→ TALISMAN visual R1
+```
+
+exists.
+
+Then gameplay evolves:
+
+```text
+BORIS body R18
+```
+
+and VisualForge gets:
+
+```text
+VisualSpec(mechanical_version="R18")
+```
+
+but returns the existing R17 visual.
+
+That directly violates:
+
+> image ↔ gameplay truth stay coupled.
+
+This is P0 because it's one of your new constitution-level rules.
+
+The lookup must include:
+
+```text
+entity_id
+asset_type
+view
+mechanical_version
+identity_version / lifecycle version where relevant
+```
+
+So:
+
+```python
+latest_canonical(
+    entity_id="boris",
+    asset_type="TALISMAN",
+    view="HERO",
+    mechanical_version="R18",
+)
+```
+
+If no exact match:
+
+```text
+generate new visual evolution
+```
+
+---
+
+# P0.6 — `AssetResolver` accepts constraints it doesn't use
+
+Its API accepts:
+
+```python
+body_version
+daimon_stage
+asset_type
+ability
+arena
+```
+
+but for the main entity it simply does:
+
+```python
+references_for(entity)
+```
+
+and returns everything canonical.
+
+So the API *looks* semantically precise while behaving broadly.
+
+That's dangerous.
+
+If the shot asks:
+
+```text
+Boris
+body_version=R18
+```
+
+it might return:
+
+```text
+TALISMAN R17
+TALISMAN R18
+portrait
+old effect
+etc.
+```
+
+once the library gets more populated.
+
+Asset resolution must be **typed and version constrained**, not name constrained.
+
+---
+
+# P0.7 — the actual end-to-end harness does not exercise the new asset system
+
+This is probably the biggest integration mismatch.
+
+`compile_shots()` does support:
+
+```python
+compile_shots(episode, asset_library=...)
+```
+
+and can resolve canonical assets.
+
+But `simulate_full_stack()` calls:
+
+```python
+compile_shots(episode)
+```
+
+without an `AssetLibrary`.
+
+Inside `compile_shots()`:
+
+```python
+lib = asset_library or AssetLibrary()
+```
+
+so it constructs an **empty library**.
+
+Therefore:
+
+```text
+full-stack simulation
+```
+
+does not currently prove:
+
+```text
+canon
+→ VisualForge
+→ canonical asset
+→ AssetResolver
+→ ShotSpec.reference
+```
+
+It proves:
+
+```text
+canon
+→ ShotSpec
+→ mock renderer
+```
+
+with empty visual references.
+
+That's a very important distinction.
+
+The E2E harness should create:
+
+```text
+AssetLibrary
+VisualForge
+```
+
+seed/generate:
+
+```text
+talisman assets
+arena asset
+Daimon asset when allowed
+```
+
+then pass the same library into:
+
+```text
+compile_shots()
+```
+
+And tests should assert:
+
+```text
+competitor intro references != []
+battle shot contains exact mechanical-version assets
+```
+
+---
+
+# 7. AssetLibrary is described as append-only, but approval mutates it in place logically
+
+`approve()` creates a replacement `VisualAsset` and overwrites:
+
+```python
+self._assets[key] = approved
+```
+
+That's not really append-only history.
+
+Likewise there isn't an implemented supersession transition.
+
+For a canon system, I would model:
+
+```text
+AssetCreated
+AssetApproved
+AssetSuperseded
+AssetRetired
+```
+
+as events.
+
+Then:
+
+```text
+VisualAsset
+```
+
+can remain immutable.
+
+You do not necessarily need event sourcing immediately, but at minimum maintain:
+
+```text
+status_history
+review_history
+superseded_by
+```
+
+instead of overwriting state silently.
+
+---
+
+# 8. “Hash-addressed” is not quite true yet
+
+`VisualAsset.digest()` hashes metadata including:
+
+```text
+asset_type
+entity_id
+version
+view
+canonicality
+mechanical_version
+identity_version
+file_uri
+```
+
+It does **not hash the image bytes**.
+
+So this detects:
+
+```text
+metadata identity changes
+```
+
+but not:
+
+```text
+r2://foo.png changed contents
+```
+
+For actual canon:
+
+```text
+file_sha256
+```
+
+should hash the binary.
+
+Then distinguish:
+
+```text
+asset_manifest_digest
+file_content_digest
+```
+
+Both useful.
+
+---
+
+# 9. `AssetLibrary.add()` silently ignores conflicts
+
+Current behavior:
+
+```python
+if key in self._assets:
+    return self._assets[key]
+```
+
+So if two different assets claim:
+
+```text
+TALISMAN:boris:HERO:R4
+```
+
+the second is silently discarded.
+
+For canonical systems, silent conflicts are bad.
+
+It should either:
+
+```text
+same digest → idempotent success
+
+different digest → CanonConflictError
+```
+
+That gives you strong immutability semantics.
+
+---
+
+# 10. VisualForge's current “QA” needs to be described as a stub
+
+It generates:
+
+```text
+generator_family = mock
+file_uri = r2://...
+qa_score = 0.95
+review_status = auto-approved
+```
+
+and immediately approves it.
+
+That's perfectly fine for CPU contract testing.
+
+But the docs/terminology should be explicit:
+
+```text
+MockVisualForge
+```
+
+or:
+
+```text
+VisualForge backend=mock
+```
+
+because currently the method names imply real:
+
+```text
+generation
+validation
+canonization
+```
+
+when all three are simulated.
+
+That distinction will matter once real image-generation APIs arrive.
+
+---
+
+# 11. Daimon resolution currently contains hard-coded lore
+
+This:
+
+```python
+return {"boris": "penelope"}.get(agent_id, "")
+```
+
+in the shot layer should not survive.
+
+The whole point is:
+
+```text
+Daimon emerges from canon
+```
+
+So ShotCompiler should query:
+
+```text
+AgentState.daimon
+```
+
+or canonical character state.
+
+A manually hardcoded:
+
+```text
+Boris → Penelope
+```
+
+recreates exactly the static-lore approach the architecture is trying to replace.
+
+---
+
+# 12. Another version problem: `_entity_versions()` hardcodes `v0`
+
+Shot compilation currently emits:
+
+```python
+f"{aid}:talisman:v0"
+```
+
+for every competitor.
+
+So even if Boris's actual body is:
+
+```text
+R17
+```
+
+the media layer says:
+
+```text
+boris:talisman:v0
+```
+
+This completely defeats the otherwise good mechanical→visual version coupling.
+
+The episode/story object needs the actual:
+
+```text
+body_id
+body_version
+daimon version
+visual version
+```
+
+passed through.
+
+---
+
+# 13. Shot event IDs are not fully canonical yet
+
+Current battle shot IDs are built as:
+
+```text
+match_id : timestamp-or-index
+```
+
+from story beats.
+
+Better than nothing, but the engine's actual `Event` needs first-class immutable identity:
+
+```text
+match_id
+round_id
+event_index
+event_type
+tick
+```
+
+Then:
+
+```text
+rbz://match/<id>/round/2/event/17
+```
+
+A ShotSpec should point to that.
+
+That means:
+
+```text
+story beat
+```
+
+is a projection *of* canonical events rather than itself serving as the canonical identifier.
+
+---
+
+# 14. Media architecture is strong, but QA is currently tautological
+
+This is a major distinction.
+
+The media module has the right abstraction:
+
+```text
+ShotSpec
+RenderRequest
+RenderJob
+RenderArtifact
+QAVerdict
+```
+
+and LTX is correctly downstream.
+
+Excellent.
+
+But `simulate_render()` does:
+
+```python
+digest = shot.digest()
+```
+
+and `run_qa()` validates:
+
+```python
+artifact.digest == shot.digest()
+```
+
+So the mocked renderer says:
+
+```text
+"I rendered exactly this spec"
+```
+
+and QA asks:
+
+```text
+"does your self-reported digest equal the spec?"
+```
+
+Naturally it passes.
+
+That's useful **protocol QA**, not media QA.
+
+Call it:
+
+```text
+BindingQA
+```
+
+or:
+
+```text
+ManifestQA
+```
+
+Then actual rendered footage needs another layer:
+
+```text
+VisualQA
+```
+
+that evaluates:
+
+```text
+identity preserved?
+number of competitors correct?
+event order correct?
+result correct?
+arena correct?
+first/last state approximately correct?
+effect only where permitted?
+Daimon identity correct?
+```
+
+Eventually with a vision model + deterministic metadata checks.
+
+---
+
+# 15. `expected_winner` is not currently checked
+
+`run_qa()` receives:
+
+```python
+expected_winner
+```
+
+but then essentially just appends:
+
+```text
+winner context respected
+```
+
+without inspecting anything.
+
+Same issue:
+
+```text
+the plumbing exists
+the verification doesn't
+```
+
+Do not allow this method to return a successful semantic QA verdict until it really verified something.
+
+---
+
+# 16. Reframe's digest semantics are incorrect
+
+`reframe()` creates a new artifact with:
+
+```python
+digest=artifact.digest
+```
+
+even though the video bytes/composition would differ.
+
+The correct relationship is:
+
+```text
+parent_artifact_digest
+transform = REFRAME(9:16)
+new_artifact_digest
+```
+
+Do not reuse the content digest.
+
+Same principle will apply to:
+
+```text
+Retake
+Extend
+Upscale
+```
+
+Derived assets need lineage, not identical hashes.
+
+---
+
+# 17. `RenderRequest` still defaults to 2.3 while `RendererManifest` says 2.5
+
+This is minor but should be cleaned immediately:
+
+```python
+RenderRequest.renderer_version = "2.3"
+```
+
+while:
+
+```python
+RendererManifest.renderer_version = "2.5"
+```
+
+That can create internally contradictory render jobs.
+
+Better: remove renderer details from `RenderRequest` entirely and make it reference:
+
+```text
+renderer_profile_id
+```
+
+which resolves to one immutable `RendererManifest`.
+
+---
+
+# 18. `simulate_full_stack(entries)` still accepts policies that are ignored
+
+Its public shape is:
+
+```python
+entries:
+(agent_id, body, policy)
+```
+
+but the third tuple item is not used in battle anymore.
+
+That's leftover architecture.
+
+Change to:
+
+```text
+(agent_id, body)
+```
+
+or perhaps:
+
+```text
+CompetitionEntry
+├ agent
+├ body
+├ reincarnation_author
+```
+
+Do not retain a ghost “policy” parameter now that reincarnation supersedes it.
+
+---
+
+# 19. The test suite has good coverage shape, but misses the highest-risk properties
+
+57 passing tests is useful, but the tests I inspected mostly assert:
+
+```text
+objects exist
+commitment non-empty
+four views produced
+reincarnation has states
+```
+
+For example, the reincarnation test only verifies that a manifest exists and compiles.
+
+Asset tests confirm the same `R17` spec is reused, but don't test:
+
+```text
+R17 → R18
+```
+
+which is exactly where the bug is.
+
+The next test suite should be adversarial.
+
+---
+
+# Tests I would add immediately
+
+```text
+test_r18_visual_never_reuses_r17_asset
+test_resolver_filters_exact_mechanical_version
+
+test_different_reincarnation_ast_changes_match_commitment
+test_reincarnation_reveal_verifies_commitment
+test_match_record_contains_reincarnation_ast_digest
+
+test_pressure_only_recovers_at_low_integrity
+test_closing_speed_is_relative_velocity
+test_memory_can_change_future_transition
+test_reincarnation_lineage_increments
+
+test_full_stack_shots_have_nonempty_canonical_references
+test_full_stack_refs_match_actual_body_version
+test_latent_daimon_has_no_manifest_asset
+test_manifested_daimon_resolves_from_agent_state_not_hardcode
+
+test_asset_key_conflict_with_different_digest_raises
+test_file_digest_is_binary_content_digest
+test_superseded_asset_not_returned_as_current
+
+test_semantic_qa_does_not_auto-pass_mock_render
+test_reframed_artifact_has_new_digest_and_parent_lineage
+```
+
+Those tests would buy you much more than another 30 shape tests.
+
+---
+
+# 20. One bigger architectural suggestion: make `CompetitionEntry` first-class
+
+A lot of identity mapping friction comes from carrying:
+
+```text
+agent_id
+body id
+body version
+Daimon
+reincarnation
+```
+
+separately.
+
+Define:
+
+```text
+CompetitionEntry
+
+agent_id
+agent_version
+
+body_id
+body_version
+
+current_daimon_id
+daimon_stage
+daimon_version
+
+reincarnation_author_id
+
+visual_identity_version
+```
+
+Then a battle begins from:
+
+```text
+EntrySnapshot
+```
+
+and the exact snapshot is immutable for the match.
+
+That makes it much harder for media/canon to later say:
+
+```text
+boris:talisman:v0
+```
+
+when the actual competitor was Boris body R17.
+
+---
+
+# 21. Similarly, create a `MatchExecutionManifest`
+
+This would solve the commitment issue cleanly.
+
+```text
+MatchExecutionManifest
+
+engine_version
+physics_version
+ruleset_version
+arena_version
+
+entry_a_snapshot
+entry_b_snapshot
+
+body_a_digest
+body_b_digest
+
+reincarnation_a_digest
+reincarnation_b_digest
+
+challenge_nonce
+seed
+round_count
+```
+
+Hash it:
+
+```text
+execution_digest
+```
+
+Then:
+
+```text
+execution_digest
++
+event log
+=
+canonical match
+```
+
+That's the cryptographic core RoboBladez wants.
+
+---
+
+# 22. Visual assets should bind to `EntrySnapshot`
+
+Then visual resolution becomes deterministic:
+
+```text
+EntrySnapshot
+├ body_version R17
+├ Daimon stage MANIFEST/R3
+└ visual_identity R4
+```
+
+AssetResolver receives the snapshot and cannot accidentally choose:
+
+```text
+R16
+R18
+ASCENDED
+latent
+```
+
+because those aren't legal references for that entry.
+
+That's cleaner than passing optional strings individually.
+
+---
+
+# 23. Abilities / superpowers are still not integrated into reincarnation
+
+The system you've built is the correct MVP:
+
+```text
+movement
+state transitions
+memory
+```
+
+But your eventual vision is substantially larger:
+
+```text
+continuous controls
++
+ability activation
++
+target selection
++
+effect lifecycles
++
+cooldown/resource management
++
+ability-local state
+```
+
+The runtime already has:
+
+```python
+self.ability_ready
+```
+
+but it is unused.
+
+So the next RBZ-RC language extension should probably be:
+
+```text
+RBZ-RC-2
+```
+
+rather than overloading RC-1.
+
+For example:
+
+```yaml
+abilities:
+  - id: momentum_redirect
+
+states:
+  pressure:
+    actions:
+      movement: ...
+      abilities:
+        - if:
+            closing_speed: ">0.7"
+            distance: "<0.12"
+          activate: momentum_redirect
+```
+
+Then `AbilityRuntime` owns:
+
+```text
+cost
+cooldown
+duration
+effect hooks
+target legality
+```
+
+while reincarnation only chooses activation.
+
+That's the clean separation.
+
+---
+
+# 24. The Visual Asset constitution rules are conceptually excellent
+
+The new rule:
+
+> Generative models may propose visual reality; only canon establishes it.
+
+is exactly right.
+
+I would add one more:
+
+> **No renderer may resolve an unversioned persistent entity.**
+
+Meaning invalid:
+
+```text
+boris
+penelope
+arena-s1
+```
+
+Valid:
+
+```text
+boris:talisman:mechanical-R17:visual-R4
+penelope:manifest:R3
+arena-s1:R5
+```
+
+That single invariant will prevent a lot of future consistency bugs.
+
+---
+
+# 25. No GitHub CI status is currently visible
+
+GitHub returned no combined status checks for `2bfe2aa`.
+
+So:
+
+```text
+57/57 local tests
+```
+
+is useful, but not yet enforced at origin.
+
+Add:
+
+```text
+.github/workflows/test.yml
+```
+
+with:
+
+```text
+pytest
+python -m compileall src
+```
+
+and maybe lint/type check later.
+
+Given how much determinism depends on tiny changes, branch protection eventually matters.
+
+---
+
+# What I would *not* change
+
+Several architectural decisions should now be treated as settled unless evidence forces revision:
+
+**Keep the LLM out of the physics loop.** The `ReincarnationRuntime` approach is exactly right.
+
+**Keep mechanical reveal before reincarnation.** That is still one of the strongest mechanics in the entire project.
+
+**Keep Agent ≠ Reincarnation ≠ Body ≠ Daimon.**
+
+**Keep simulation truth upstream of story/media.**
+
+**Keep VisualSpec as source of visual truth, not prompt text.**
+
+**Keep LTX replaceable.** The media contracts are correct even though the real backend isn't wired yet.
+
+**Keep transactional post-match updates.**
+
+Those are now core architecture.
+
+---
+
+# Exact next execution order
+
+I would do these as discrete commits.
+
+```text
+A — REINCARNATION CORRECTNESS
+fix integrity transition
+fix closing_speed
+add memory-readable conditions
+tests
+```
+
+Then:
+
+```text
+B — EXECUTION COMMITMENT
+MatchExecutionManifest
+pin canonical reincarnation AST digest
+single commit/reveal protocol
+reveal verification test
+```
+
+Then:
+
+```text
+C — REINCARNATION LINEAGE
+persistent per-Agent R001/R002/...
+parent links
+history
+```
+
+Then:
+
+```text
+D — REAL AUTHOR INTERFACE
+ReincarnationContext
+BaselineAuthor
+LLMAuthor interface
+Agent memory/opponent models/reflections input
+```
+
+Then:
+
+```text
+E — VISUAL VERSION SAFETY
+mechanical_version-aware lookup
+typed resolver
+conflict detection
+actual file hashes
+supersession history
+```
+
+Then:
+
+```text
+F — ASSET E2E
+VisualForge in simulate_full_stack
+populate canonical talisman/arena refs
+remove hardcoded Boris→Penelope
+pass actual body/daimon versions into shots
+```
+
+Then:
+
+```text
+G — MEDIA TRUTH
+first-class event IDs
+pre/post event states
+ShotSpec points to actual events
+```
+
+Then:
+
+```text
+H — QA SPLIT
+BindingQA
+VisualQA interface
+OutcomeQA
+IdentityQA
+```
+
+Then:
+
+```text
+I — ABILITY RUNTIME / RBZ-RC-2
+activation conditions
+resource/cooldown
+targeting
+effect hooks
+```
+
+Then:
+
+```text
+J — CI
+```
+
+Only after A–J would I move to:
+
+```text
+10–12 serious reincarnation archetypes / authors
+8 body archetypes
+100k matchup audit
+meta emergence
+```
+
+because otherwise you're measuring bugs in controller semantics and version resolution rather than strategy.
+
+---
+
+# The most important finding
+
+The project now has the correct three-stage intelligence architecture:
+
+```text
+PERSISTENT INTELLIGENCE
+        ↓
+SELF-COMPILATION
+        ↓
+LIVE EXECUTABLE INTELLIGENCE
+```
+
+That's excellent.
+
+But today stage two is still:
+
+```text
+hand-authored deterministic heuristic
+```
+
+rather than:
+
+```text
+persistent AI strategically writes itself
+```
+
+and the exact self it creates is not yet cryptographically bound into the canonical match.
+
+**Fix those two things and the defining RoboBladez mechanic becomes real in the strongest sense, not merely architectural.**
+
+Likewise on visuals, the system has the right ontology—but until `mechanical_version` participates in resolution and the full-stack harness actually uses the asset library, it isn't yet safe to say that the visual canon automatically stays coupled to gameplay canon.
+
+So I would characterize `2bfe2aa` as:
+
+> **Architecture complete enough to stop designing horizontally. Now harden the vertical truth paths.**
+
+That is a very good place for the repo to be.

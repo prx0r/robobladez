@@ -106,7 +106,8 @@ def run_round(round_no:int,seed:int,arena:ArenaSpec,sa:BladeSpec,sb:BladeSpec,
     return RoundResult(round_no,seed,None,"time_draw",frames,events)
 
 def run_match(seed:int,arena:ArenaSpec,sa:BladeSpec,sb:BladeSpec,
-              pa:Policy,pb:Policy,rounds:int=5,record_frames:bool=True) -> MatchResult:
+              pa:Policy,pb:Policy,rounds:int=5,record_frames:bool=True,
+              reincarnation_bindings:dict[str,dict]|None=None) -> MatchResult:
     if rounds<1 or rounds%2==0: raise ValueError("rounds must be positive odd")
     if sa.id==sb.id: raise ValueError("blade ids must differ")
     mid=_match_id(seed,sa.id,sb.id,arena)
@@ -133,9 +134,13 @@ def run_match(seed:int,arena:ArenaSpec,sa:BladeSpec,sb:BladeSpec,
     else:
         winner=None
 
+    bindings = {
+        k: dict(v) for k, v in (reincarnation_bindings or {}).items()
+    } if reincarnation_bindings else {}
     m=MatchResult(mid,ENGINE_VERSION,seed,asdict(arena),
                   {sa.id:asdict(sa),sb.id:asdict(sb)},
-                  manifests,commits,results,wins,winner)
+                  manifests,commits,results,wins,winner,
+                  reincarnation_bindings=bindings)
     d=m.to_dict()
     m.replay_digest=replay_digest_dict(d)
     return m

@@ -35,9 +35,20 @@ def validate(manifest: ReincarnationManifest) -> None:
         raise ValidationError(f"too many states for {manifest.compute_class}")
 
     n_transitions = 0
+    memory_names = {m.name for m in manifest.memory}
     for s in manifest.states:
         action = s.get("action", {})
         for k in action:
+            if k == "memory":
+                # Memory ops: [{"name","op":set|add,"value"}]. Validate names + values.
+                for m in action[k]:
+                    if m.get("name", "") not in memory_names:
+                        raise ValidationError(f"memory op references unknown slot {m.get('name')!r}")
+                    if m.get("op", "add") not in ("set", "add"):
+                        raise ValidationError(f"unknown memory op {m.get('op')!r}")
+                    if not _finite(m.get("value", 0)):
+                        raise ValidationError("non-finite memory value")
+                continue
             if k not in CONTROLS:
                 raise ValidationError(f"illegal control {k!r}")
             v = action[k]

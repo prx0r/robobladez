@@ -3,6 +3,7 @@ from .demo import run_demo
 from .audit import run_audit
 from .league import run_season
 from .simulate import simulate_full_stack
+from .mvp import run_mvp
 from .agent import AgentState
 from .battle import run_battle
 from .model import BladeSpec
@@ -67,6 +68,13 @@ def main():
     s = sp.add_parser("season"); s.add_argument("--out", default="./out")
     b = sp.add_parser("battle"); b.add_argument("--out", default="./out")
     sim = sp.add_parser("simulate"); sim.add_argument("--out", default="./out")
+    mv = sp.add_parser("mvp"); mv.add_argument("--out", default="./out/mvp")
+    mv.add_argument("--agents", nargs="*", default=["boris", "morty"])
+    mv.add_argument("--seed", type=int, default=2026)
+    mv.add_argument("--rounds", type=int, default=3)
+    mv.add_argument("--no-render", action="store_true")
+    mx = sp.add_parser("matrix", help="legacy policy-zoo matchup matrix analysis")
+    mx.add_argument("--tsv", default="matrix.tsv")
     x = p.parse_args()
     if x.cmd == "demo":
         print(json.dumps(run_demo(x.out), indent=2))
@@ -86,6 +94,13 @@ def main():
         }, indent=2))
     elif x.cmd == "simulate":
         print(json.dumps(_simulate(x.out), indent=2))
+    elif x.cmd == "mvp":
+        run = run_mvp(out_dir=x.out, agents=x.agents, seed=x.seed,
+                      rounds=x.rounds, render=not x.no_render)
+        print(json.dumps(run, indent=2))
+    elif x.cmd == "matrix":
+        from . import meta
+        print(json.dumps(meta.analyze(x.tsv), indent=2))
     else:
         print(json.dumps(_battle(x.out), indent=2))
 

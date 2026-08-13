@@ -1,0 +1,1573 @@
+The shortest path to a **real RoboBladez MVP** is not “finish every subsystem.” It is to make one complete vertical slice impossible to fake:
+
+```text
+PERSISTENT AGENTS
+→ mechanical reveal
+→ agents author reincarnations
+→ sealed deterministic match
+→ canonical replay/events
+→ agent/daimon evolution
+→ story
+→ canonical visual assets
+→ shot graph
+→ control/keyframe generation
+→ LTX-2.5
+→ visual QA / retake
+→ final MP4 + complete provenance bundle
+```
+
+You are much closer than it looks. The architecture already has most of these boxes; the job now is making the boundaries real and joining them.
+
+---
+
+# Definition of “working MVP”
+
+One command should eventually do this:
+
+```bash
+robobladez mvp \
+  --agent boris \
+  --agent morty \
+  --seed 2026 \
+  --render \
+  --out out/mvp
+```
+
+and produce:
+
+```text
+out/mvp/
+├── competition/
+│   ├── entries.json
+│   ├── mechanical-report.json
+│   ├── match-execution-manifest.json
+│   ├── reincarnations/
+│   │   ├── boris-r001.json
+│   │   └── morty-r001.json
+│   ├── match.json
+│   └── replay.json
+│
+├── canon/
+│   ├── events.jsonl
+│   ├── agent-snapshots/
+│   ├── daimon-snapshots/
+│   └── canon-manifest.json
+│
+├── visual/
+│   ├── boris/
+│   ├── morty/
+│   ├── arena/
+│   ├── effects/
+│   └── visual-manifest.json
+│
+├── story/
+│   ├── episode.json
+│   └── beats.json
+│
+├── shots/
+│   ├── shot-001.json
+│   ├── shot-002.json
+│   └── ...
+│
+├── controls/
+│   ├── shot-003-first.png
+│   ├── shot-003-last.png
+│   ├── shot-003-guide.mp4
+│   └── ...
+│
+├── renders/
+│   ├── drafts/
+│   ├── finals/
+│   └── retakes/
+│
+├── qa/
+│   └── verdicts.json
+│
+├── episode/
+│   ├── master.mp4
+│   ├── vertical.mp4
+│   └── episode-manifest.json
+│
+└── RUN.json
+```
+
+If that directory exists and every artifact is linked to its parents, **the MVP exists**.
+
+Everything else—public entrants, 100 agents, huge league seasons, rich Daimon dialogue, evolutionary search—is post-MVP.
+
+---
+
+# Phase 0 — freeze the MVP scope
+
+For the first complete run:
+
+```text
+2 Agents
+2 bodies
+1 arena
+1 ruleset
+1 reincarnation compute class
+1 ability-free battle format
+3 strategic rounds
+1 episode
+5–8 rendered shots
+```
+
+Use:
+
+```text
+Boris
+Morty
+```
+
+or any two fixtures.
+
+Do **not** require manifested Daimons for MVP-1.
+
+The Daimon system remains active:
+
+```text
+LATENT
+→ PROTO
+→ ...
+```
+
+but if Boris hasn't earned a manifested Daimon, the media system must respect that.
+
+For testing the **Daimon visual path**, create a separate deterministic fixture representing a later valid career snapshot instead of pretending the first match manifested one.
+
+---
+
+# Phase 1 — repair reincarnation semantics
+
+This is first because everything interesting depends on it.
+
+Current `ReincarnationRuntime` is genuinely in the physics path, which is the right breakthrough.
+
+But fix the semantics before measuring strategy.
+
+### 1A. Fix telemetry
+
+Correct:
+
+```text
+closing_speed
+```
+
+to actual relative closing velocity rather than self-speed. The old `CounterPolicy` already demonstrates the proper calculation.
+
+Add:
+
+```text
+distance
+closing_speed
+relative_tangential_speed
+self_radius_fraction
+opponent_radius_fraction
+self_energy_fraction
+opponent_energy_fraction
+self_integrity_fraction
+opponent_integrity_fraction
+self_spin
+opponent_spin
+time
+round_time
+```
+
+Keep observation vocabulary small for RC-1.
+
+### 1B. Fix the pressure/recover bug
+
+Current authored machine has effectively:
+
+```text
+if self_integrity > 0:
+    recover
+```
+
+when it intends low integrity.
+
+Use:
+
+```text
+self_integrity_fraction < 0.30
+```
+
+### 1C. Make memory actually usable
+
+RC-1 should support:
+
+```text
+READ:
+memory.<slot>
+
+WRITE:
+SET
+ADD
+EMA
+MIN
+MAX
+```
+
+For example:
+
+```yaml
+memory:
+  opponent_rushes: 0
+  close_contacts: 0
+  last_opening: 0
+```
+
+and:
+
+```text
+if memory.opponent_rushes >= 2:
+    goto bait
+```
+
+Still completely deterministic and bounded.
+
+### Exit gate
+
+Tests prove:
+
+```text
+relative closing speed is correct
+low integrity triggers recovery
+high integrity does not
+memory affects later decisions
+same manifest + telemetry = same actions
+```
+
+---
+
+# Phase 2 — make reincarnation cryptographically part of the match
+
+This is essential.
+
+At present there is a good reincarnation commitment, but generic engine policy manifests don't pin the complete reincarnation AST.
+
+Create:
+
+```text
+MatchExecutionManifest
+```
+
+Schema:
+
+```yaml
+execution_id:
+
+engine:
+  engine_version:
+  physics_version:
+  ruleset_version:
+
+arena:
+  arena_id:
+  arena_version:
+  digest:
+
+entry_a:
+  agent_id:
+  agent_version:
+  body_id:
+  body_version:
+  body_digest:
+  reincarnation_id:
+  reincarnation_digest:
+  commitment:
+
+entry_b:
+  ...
+
+challenge_nonce:
+seed:
+rounds:
+```
+
+Then define:
+
+```text
+EXACT MATCH
+=
+MatchExecutionManifest
+```
+
+Its digest becomes:
+
+```text
+execution_digest
+```
+
+and the replay says:
+
+```text
+execution_digest: ...
+```
+
+## One commitment protocol only
+
+Flow:
+
+```text
+ENGINE issues MatchChallenge
+↓
+Agents receive public inputs
+↓
+Agent A writes RC-A
+Agent B writes RC-B
+↓
+hash(RC-A + challenge_nonce)
+hash(RC-B + challenge_nonce)
+↓
+both committed
+↓
+battle seed revealed/activated
+↓
+match
+↓
+RC-A / RC-B reveal
+↓
+verification
+```
+
+Remove parallel commitment semantics.
+
+### Exit gate
+
+Changing **one state-machine threshold** changes:
+
+```text
+reincarnation_digest
+execution_digest
+```
+
+and replay verification rejects substitution.
+
+---
+
+# Phase 3 — create first-class `CompetitionEntry`
+
+Stop passing agent/body/version information around separately.
+
+Create:
+
+```text
+CompetitionEntry
+```
+
+```yaml
+agent_id:
+agent_version:
+
+body_id:
+body_version:
+body_digest:
+
+daimon:
+  stage:
+  daimon_id:
+  version:
+
+visual_identity_version:
+
+reincarnation_author:
+  author_type:
+  author_version:
+```
+
+At match start create immutable:
+
+```text
+EntrySnapshot
+```
+
+Then everything downstream uses that.
+
+This eliminates:
+
+```text
+"boris:talisman:v0"
+```
+
+when Boris actually fought with body R17.
+
+The current shot compiler still hardcodes `v0`; this is exactly what the snapshot should eliminate.
+
+---
+
+# Phase 4 — split the current author into baseline vs real AI author
+
+Rename current:
+
+```text
+ReincarnationAuthor
+```
+
+to:
+
+```text
+BaselineReincarnationAuthor
+```
+
+because right now it is a deterministic heuristic compiler over the mechanical report, not yet the persistent Agent truly rewriting itself.
+
+Create the real contract:
+
+```python
+class ReincarnationAuthor:
+    def author(
+        self,
+        context: ReincarnationContext
+    ) -> ReincarnationManifest:
+        ...
+```
+
+`ReincarnationContext`:
+
+```text
+agent snapshot
+mechanical report
+opponent public record
+opponent model
+own previous reincarnations
+post-match reflections
+recent strategic failures
+Daimon advice, if manifested
+human mentor messages
+ruleset
+body capabilities
+ability library
+compute class
+```
+
+Then implementations:
+
+```text
+BaselineReincarnationAuthor
+LLMReincarnationAuthor
+EvolutionaryReincarnationAuthor   later
+HybridAuthor                      later
+```
+
+For MVP:
+
+```text
+BaselineAuthor
++
+one actual LLMAuthor
+```
+
+is enough.
+
+The LLM's output must be:
+
+```text
+RBZ-RC-1 JSON
+```
+
+not Python.
+
+Then:
+
+```text
+parse
+validate
+normalize
+commit
+```
+
+Invalid output gets repair attempts or falls back to baseline.
+
+---
+
+# Phase 5 — reincarnation lineage
+
+AgentState needs:
+
+```text
+reincarnation_counter
+reincarnation_history
+current_reincarnation_id
+```
+
+So Boris produces:
+
+```text
+boris-r001
+boris-r002
+boris-r003
+...
+```
+
+not `boris-r1` forever.
+
+Store:
+
+```text
+parent
+target opponent
+strategy thesis
+manifest digest
+match result
+reflection
+success/failure
+```
+
+This gives you actual strategic history.
+
+Later commentary can say:
+
+> Boris R14 introduced his first anti-rush architecture.
+
+That becomes real data.
+
+---
+
+# Phase 6 — prove the competition vertical slice before media
+
+At this point run:
+
+```text
+Boris
+vs
+Morty
+```
+
+and inspect:
+
+```text
+mechanical baseline
+reincarnation A
+reincarnation B
+commitments
+strategic rounds
+replay
+winner
+reflections
+agent updates
+Daimon updates
+```
+
+Do **100–1,000 seeded runs**, not for balance yet, but to catch:
+
+```text
+state machines that get stuck
+unreachable states
+degenerate orbiting
+controller oscillation
+energy exploits
+ring-out pathologies
+determinism drift
+```
+
+Do not start huge 100k balancing yet.
+
+First prove:
+
+```text
+different authored RCs
+→ materially different behavior
+```
+
+---
+
+# Phase 7 — make canonical events first-class
+
+The engine currently has events, but media still uses story-derived identifiers.
+
+Create:
+
+```text
+CanonicalEvent
+```
+
+```yaml
+event_id: rbz://match/<id>/round/2/event/17
+match_id:
+execution_digest:
+round:
+tick:
+time:
+type:
+actor:
+target:
+pre_state:
+post_state:
+payload:
+```
+
+Event types:
+
+```text
+ROUND_STARTED
+COLLISION
+ABILITY_STARTED
+ABILITY_ENDED
+RING_OUT
+SPIN_OUT
+BURST
+ROUND_ENDED
+MATCH_ENDED
+```
+
+For RC-1 MVP there may be no abilities.
+
+Crucially:
+
+```text
+pre_state
+post_state
+```
+
+should contain enough state to reconstruct the event visually.
+
+That makes the renderer's job radically easier.
+
+---
+
+# Phase 8 — canonical story compiler
+
+Don't render every event.
+
+Create:
+
+```text
+SignificanceDetector
+```
+
+that identifies:
+
+```text
+opening
+major collision
+lead change
+near ring-out
+decisive collision
+round result
+match result
+strategy reveal
+```
+
+Then:
+
+```text
+canonical events
+↓
+EpisodeSpec
+↓
+StoryBeat[]
+```
+
+Each beat contains:
+
+```text
+basis_event_ids
+importance
+story function
+allowed interpretation
+```
+
+For example:
+
+```yaml
+beat_id: b07
+type: DECISIVE_COLLISION
+basis_events:
+  - rbz://match/m27/round/3/event/18
+importance: 0.96
+```
+
+The story may interpret events.
+
+It may not invent them.
+
+---
+
+# Phase 9 — harden the visual asset system
+
+Your `VisualSpec → VisualAsset → AssetLibrary → VisualForge` ontology is good and should stay.
+
+Now enforce it.
+
+## 9A. Version-aware resolution
+
+Asset lookup must require:
+
+```text
+entity
+asset_type
+mechanical_version
+visual_version
+view
+lifecycle stage where relevant
+```
+
+So:
+
+```text
+body R18
+```
+
+cannot reuse:
+
+```text
+body R17 visual
+```
+
+accidentally.
+
+## 9B. Real content hashes
+
+Store:
+
+```text
+manifest_digest
+file_sha256
+```
+
+separately.
+
+## 9C. Immutable conflict handling
+
+If:
+
+```text
+same asset key
+same digest
+```
+
+idempotent.
+
+If:
+
+```text
+same asset key
+different digest
+```
+
+raise:
+
+```text
+CanonConflictError
+```
+
+## 9D. Real supersession
+
+```text
+R17 visual
+→ SUPERSEDED_BY
+R18 visual
+```
+
+Never delete history.
+
+---
+
+# Phase 10 — plug in a real image-generation backend
+
+Keep:
+
+```text
+VisualForge
+```
+
+provider-agnostic.
+
+Add:
+
+```text
+ImageGeneratorBackend
+```
+
+interface:
+
+```python
+generate(
+    visual_spec,
+    references,
+    style_profile,
+    view
+) -> CandidateImage[]
+```
+
+Then use one actual image-generation provider.
+
+Architecture:
+
+```text
+VisualSpec
+↓
+PromptCompiler
+↓
+ImageGeneratorBackend
+↓
+4 candidates
+↓
+VisualQA
+↓
+approve / human review
+↓
+AssetLibrary
+```
+
+For MVP require canonical packs for:
+
+```text
+Boris talisman
+Morty talisman
+Arena S1
+```
+
+Views:
+
+```text
+HERO
+TOP
+SIDE
+THREE_QUARTER
+```
+
+Do not require 30 assets.
+
+---
+
+# Phase 11 — build visual evolution rather than regeneration
+
+When:
+
+```text
+body R17 → R18
+```
+
+produce:
+
+```text
+VisualEvolutionSpec
+```
+
+containing the delta:
+
+```text
+preserve:
+central sigil
+materials
+identity silhouette family
+
+change:
+radius
+outer ring
+contact points
+```
+
+Then use the previous canonical image as reference.
+
+Same for Daimons:
+
+```text
+EMERGING
+→ MANIFEST
+```
+
+This is how the world visually accumulates history rather than randomly restyling itself.
+
+---
+
+# Phase 12 — put the asset system into `simulate_full_stack`
+
+This is currently missing.
+
+`simulate_full_stack()` compiles shots without passing a populated AssetLibrary, so the full-stack proof doesn't actually exercise canonical image resolution.
+
+Change to:
+
+```text
+simulate_full_stack
+├ CompetitionEntry
+├ AssetLibrary
+├ VisualForge
+├ CanonStore
+├ Renderer
+└ QA
+```
+
+Before rendering:
+
+```python
+forge.ensure_visual(boris_talisman_spec)
+forge.ensure_visual(morty_talisman_spec)
+forge.ensure_visual(arena_spec)
+```
+
+Then:
+
+```python
+compile_shots(
+    episode,
+    asset_library=library
+)
+```
+
+Tests must assert:
+
+```text
+intro shots have references
+battle shots have arena references
+references match exact body version
+```
+
+Only then is the visual pipeline actually wired.
+
+---
+
+# Phase 13 — generate control frames from the deterministic replay
+
+This is the most important media engineering work after canonical assets.
+
+For each canonical battle shot, produce:
+
+```text
+FIRST FRAME
+LAST FRAME
+optional GUIDE VIDEO
+```
+
+from:
+
+```text
+CanonicalEvent.pre_state
+CanonicalEvent.post_state
+canonical assets
+arena
+camera
+```
+
+For MVP, keep the camera simple:
+
+```text
+top-down
+high three-quarter
+low three-quarter
+```
+
+You don't need full 3D simulation initially.
+
+A simple deterministic compositor can place:
+
+```text
+canonical talisman top views
++
+arena image
++
+orientation
++
+position
++
+scale
+```
+
+to generate:
+
+```text
+shot-004-first.png
+shot-004-last.png
+```
+
+These are not intended to look final.
+
+They're **control plates**.
+
+Then LTX gets:
+
+```text
+canonical appearance references
++
+first state
++
+last state
++
+prompt
+```
+
+This is vastly better than relying entirely on text.
+
+---
+
+# Phase 14 — `ShotSpec v2`
+
+Extend the current ShotSpec.
+
+```yaml
+shot_id:
+canonicality:
+basis_event_ids:
+
+subjects:
+  - entry_snapshot:
+    visual_assets:
+
+environment:
+  arena_version:
+  references:
+
+state:
+  first_frame:
+  last_frame:
+  guide_video:
+
+camera:
+audio:
+prompt:
+constraints:
+qa:
+
+control:
+  preferred: FIRST_LAST
+  fallback: KEYFRAME
+```
+
+Every battle shot should have:
+
+```text
+basis_event_ids != []
+```
+
+and exact versioned references.
+
+---
+
+# Phase 15 — choose control route automatically
+
+Implement:
+
+```text
+ControlPlanner
+```
+
+Rules:
+
+```text
+establishing arena
+→ T2V/I2V
+
+competitor intro
+→ I2V
+
+important collision
+→ FIRST_LAST or KEYFRAME
+
+complex deterministic trajectory
+→ guide video / motion control
+
+Daimon manifestation
+→ I2V + references
+
+failed 1.5s region
+→ RETAKE
+```
+
+This keeps the model on the least-generative route possible.
+
+---
+
+# Phase 16 — real LTX-2.5 renderer
+
+Keep the renderer abstraction you've already built.
+
+Implement:
+
+```text
+LTX25Renderer
+```
+
+against:
+
+```python
+submit(shot_spec)
+status(job)
+fetch(job)
+retake(...)
+reframe(...)
+```
+
+For your hardware situation, **API first** is the easiest MVP.
+
+Don't make ComfyUI the first integration requirement.
+
+Later:
+
+```text
+LTX25ApiRenderer
+LTX25ComfyRenderer
+LTX25LocalRenderer
+```
+
+all satisfy one interface.
+
+Renderer config belongs outside domain logic:
+
+```yaml
+profiles:
+  draft:
+    renderer: ltx
+    version: "2.5"
+    backend: api
+    quality: fast
+
+  final:
+    renderer: ltx
+    version: "2.5"
+    backend: api
+    quality: pro
+```
+
+---
+
+# Phase 17 — split QA into three layers
+
+The current mock QA mostly proves binding, not rendered correctness.
+
+Create:
+
+## BindingQA
+
+Deterministic.
+
+Checks:
+
+```text
+exact event refs
+exact asset refs
+correct versions
+correct winner constraints
+renderer manifest exists
+```
+
+## VisualQA
+
+Inspect actual rendered frames.
+
+Checks:
+
+```text
+Boris resembles canonical Boris
+Morty resembles canonical Morty
+two competitors only
+arena identity preserved
+no major object mutation
+```
+
+Can use a multimodal model later.
+
+## EventQA
+
+Checks the generated video against event constraints:
+
+```text
+collision occurs
+relative positions plausible
+post-event direction matches
+winner isn't reversed
+```
+
+For MVP, EventQA can be:
+
+```text
+multimodal model
++
+manual approval fallback
+```
+
+Don't pretend it's deterministic.
+
+---
+
+# Phase 18 — automatic Retake loop
+
+Once VisualQA identifies:
+
+```text
+shot 007:
+failure from 2.1–3.4 sec
+```
+
+do:
+
+```text
+RetakeRequest
+├ parent artifact
+├ interval
+├ original ShotSpec
+└ failure description
+```
+
+Then:
+
+```text
+LTX Retake
+↓
+QA again
+```
+
+Cap retries:
+
+```text
+max 2 or 3
+```
+
+After that:
+
+```text
+NEEDS_REVIEW
+```
+
+Never infinite autonomous retry loops.
+
+---
+
+# Phase 19 — episode assembly
+
+Implement:
+
+```text
+EpisodeAssembler
+```
+
+Probably using ffmpeg.
+
+Inputs:
+
+```text
+accepted shot artifacts
+episode ordering
+narration
+music
+titles
+subtitles
+```
+
+For MVP:
+
+```text
+cold open
+competitor intro A
+competitor intro B
+mechanical reveal
+battle shot 1
+battle shot 2
+decisive result
+closing analysis
+```
+
+Aim:
+
+```text
+45–90 sec MVP episode
+```
+
+not a 20-minute show.
+
+This lets you prove the production machine cheaply.
+
+Output:
+
+```text
+master.mp4
+```
+
+Then:
+
+```text
+Reframe
+→ 9:16 short
+```
+
+---
+
+# Phase 20 — complete episode manifest
+
+Every episode needs immutable provenance.
+
+```text
+EpisodeManifest
+├ episode_id
+├ story_version
+├ match_execution_digest
+├ replay_digest
+├ canon_event_ids
+├ entry_snapshots
+├ visual_asset_digests
+├ shot_spec_digests
+├ render manifests
+├ render artifact digests
+├ QA verdicts
+└ final master digest
+```
+
+Then you can always answer:
+
+> Where did this frame come from?
+
+That is enormously valuable later.
+
+---
+
+# Phase 21 — only now add actual Daimon visuals
+
+Once normal battle episodes work:
+
+```text
+DaimonState
+↓
+stage transition
+```
+
+If:
+
+```text
+PROTO → EMERGING
+```
+
+perhaps create:
+
+```text
+glyph / partial presence
+```
+
+If:
+
+```text
+EMERGING → MANIFEST
+```
+
+trigger:
+
+```text
+DaimonVisualSpec
+↓
+VisualForge
+↓
+human approval
+↓
+canonical asset pack
+```
+
+The first manifestation can then become a real episode event:
+
+```text
+DAIMON_MANIFESTED
+```
+
+and the audience literally sees something that didn't exist before.
+
+That is worth preserving.
+
+---
+
+# Phase 22 — one fully autonomous season mini-loop
+
+After a single episode works, move to:
+
+```text
+4 Agents
+6 pairings
+3–5 rounds per pairing
+```
+
+CPU simulation only.
+
+Let:
+
+```text
+history
+opponent models
+reincarnation lineage
+Daimon state
+```
+
+persist.
+
+Generate media only for:
+
+```text
+top 2–3 significant matches
+```
+
+not every match.
+
+This proves:
+
+```text
+persistent competition
+→ emergent canon
+→ selective storytelling
+```
+
+which is the actual RoboBladez thesis.
+
+---
+
+# What NOT to build before this works
+
+Defer:
+
+```text
+public entrant SDK
+large website
+full spectator frontend
+PSRO
+Alpha-Rank
+100 bodies
+20 ability families
+full economy
+live streaming
+huge evolutionary population
+custom LTX LoRAs
+complex 3D arena renderer
+```
+
+Those are multipliers.
+
+They don't prove the core.
+
+---
+
+# The structural MVP stack
+
+By the end, the code should roughly look like:
+
+```text
+src/robobladez/
+│
+├── competition/
+│   ├── entry.py
+│   ├── challenge.py
+│   ├── execution.py
+│   └── battle.py
+│
+├── reincarnation/
+│   ├── schema.py
+│   ├── validate.py
+│   ├── normalize.py
+│   ├── runtime.py
+│   ├── context.py
+│   ├── baseline_author.py
+│   └── llm_author.py
+│
+├── canon/
+│   ├── events.py
+│   ├── store.py
+│   └── reducers.py
+│
+├── agents/
+│   ├── state.py
+│   ├── memory.py
+│   ├── daimon.py
+│   └── reflection.py
+│
+├── assets/
+│   ├── spec.py
+│   ├── library.py
+│   ├── resolver.py
+│   ├── forge.py
+│   ├── image_backend.py
+│   └── evolution.py
+│
+├── story/
+│   ├── significance.py
+│   ├── compiler.py
+│   └── beats.py
+│
+├── media/
+│   ├── shot_spec.py
+│   ├── control_planner.py
+│   ├── control_frames.py
+│   ├── renderer.py
+│   ├── ltx25.py
+│   ├── qa.py
+│   └── assembler.py
+│
+└── mvp.py
+```
+
+You don't need to physically move every existing file immediately. This is the **target separation of responsibilities**.
+
+---
+
+# Exact commit sequence I would hand to the dev agent
+
+```text
+01 Fix RC-1 observation + transition semantics
+02 Add bounded memory reads/writes to RC-1
+03 Add CompetitionEntry + immutable EntrySnapshot
+04 Add MatchChallenge + MatchExecutionManifest
+05 Bind reincarnation AST digests into canonical match
+06 Add reveal verification + adversarial commitment tests
+07 Add reincarnation lineage to AgentState
+08 Split BaselineReincarnationAuthor from author interface
+09 Add ReincarnationContext
+10 Add one real LLM author backend
+11 Add immutable CanonicalEvent IDs + pre/post states
+12 Update story beats to reference CanonicalEvent IDs
+13 Make AssetLibrary mechanical-version aware
+14 Add asset conflict/supersession/content hashes
+15 Remove hard-coded Boris→Penelope and v0 visual refs
+16 Add real image-generation backend to VisualForge
+17 Generate canonical Boris/Morty/Arena packs
+18 Wire populated AssetLibrary into simulate_full_stack
+19 Add deterministic first/last control-frame builder
+20 Add ShotSpec v2 + ControlPlanner
+21 Add LTX25Renderer
+22 Add BindingQA / VisualQA / EventQA split
+23 Add Retake retry loop
+24 Add EpisodeAssembler
+25 Add EpisodeManifest
+26 Add one-command robobladez mvp --render
+27 Add CI
+28 Run 100-seed vertical audit
+29 Produce first final MVP episode
+30 Freeze MVP-v1
+```
+
+That is the roadmap I would use.
+
+## The milestone that matters most
+
+Don't define success as:
+
+> “57 tests become 100 tests.”
+
+Define it as:
+
+```text
+Boris and Morty exist before the match.
+
+They inspect the same mechanical truth.
+
+Each authors a different executable self.
+
+Those exact selves are committed.
+
+Those selves fight.
+
+The result becomes immutable history.
+
+That history changes the Agents.
+
+The exact bodies/world that existed in that history resolve to canonical visual assets.
+
+The exact important events generate constrained shots.
+
+LTX renders those shots.
+
+QA rejects contradictions.
+
+A final video is assembled.
+
+Every frame can be traced back to canon.
+```
+
+**When one command can do that, RoboBladez has a real MVP.**
+
+After that, scale complexity rather than architecture.

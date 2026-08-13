@@ -93,7 +93,7 @@ integrated. Sandbox, PSRO, Alpha-Rank, exploitability are the remaining gaps.
 | BehaviorProfile | ✅ | `analysis.analyze_behavior` phenotype |
 | Daimon schema | ✅ | `DaimonState` |
 | Episode schema | ✅ | `story.compile_story` |
-| `/docs` six canonical docs | ✅ | CONSTITUTION, GAMEPLAY, GAME_RULES, EVOLUTION, SIMULATION→PHYSICS, MEDIA_PIPELINE |
+| `/docs` canonical set | ✅ | CONSTITUTION, GAMEPLAY, PHYSICS_SCOPE, GAMEPLAY_ORIGIN, MEDIA_PIPELINE, MEDIA_STRATEGY, VISUAL_ASSETS, ROADMAP, TESTING |
 | League / canon / evolution dirs | ✅ | league.py, canon.py, evolution.py |
 | Drop quantum/consciousness/IPFS from core | ✅ | none imported in core |
 

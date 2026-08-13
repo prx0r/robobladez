@@ -38,12 +38,14 @@ class AssetOntologyTests(unittest.TestCase):
     def test_asset_key_and_digest(self):
         a = build_asset("a1", "TALISMAN", "boris", version=1, view="HERO",
                         mechanical_version="R17")
-        self.assertEqual(a.asset_key(), "TALISMAN:boris:HERO:R1")
+        self.assertEqual(a.asset_key(), "TALISMAN:boris:HERO:mech-R17:R1")
         self.assertEqual(len(a.digest()), 20)
         # Mechanical version is part of the canonical digest.
         b = build_asset("a2", "TALISMAN", "boris", version=1, view="HERO",
                         mechanical_version="R18")
         self.assertNotEqual(a.digest(), b.digest())
+        # Mechanical version is part of identity (R17/R18 never collide).
+        self.assertNotEqual(a.asset_key(), b.asset_key())
 
     def test_approve_sets_canonical(self):
         a = build_asset("a1", "TALISMAN", "boris", version=1)

@@ -37,6 +37,9 @@ def simulate_full_stack(entries: list[tuple[str, Any, Any]],
     agents = {aid: AgentState(agent_id=aid, genesis_seed=f"{seed}:{aid}")
               for aid, _, _ in entries}
     specs = {aid: spec for aid, spec, _ in entries}
+    if out_dir:
+        from pathlib import Path
+        Path(out_dir).mkdir(parents=True, exist_ok=True)
     store = CanonStore(out_dir + "/canon.sqlite3") if out_dir else None
 
     battles = []
@@ -56,8 +59,17 @@ def simulate_full_stack(entries: list[tuple[str, Any, Any]],
 
     # Media pipeline for the last (or a decisive) battle.
     outcome = battles[-1]
-    episode = compile_story(outcome.match, outcome.analysis)
-    shots_dict = compile_shots(episode)
+    # Build an execution manifest (rmdev2 Phase 2) for provenance.
+    exec_manifest = _execution_manifest_for(outcome, entries, seed)
+    exec_digest = exec_manifest.execution_digest()
+    episode = compile_story(outcome.match, outcome.analysis, exec_digest)
+    # Build the canonical visual library and seed the competitors' assets so the
+    # shot compiler resolves REAL references (rmreview P0.7), not an empty lib.
+    asset_library, body_versions = _seed_visual_library(entries, seed)
+    blade_id_map = {spec.id: aid for aid, spec, _ in entries}
+    shots_dict = compile_shots(episode, asset_library=asset_library,
+                               agents=agents, body_versions=body_versions,
+                               blade_id_map=blade_id_map)
     specs = [ShotSpec(**s) for s in shots_dict["shots"]]
     media = produce_episode(specs, winner=outcome.winner_agent_id(),
                             profiles=profiles, seed=seed)
@@ -76,6 +88,7 @@ def simulate_full_stack(entries: list[tuple[str, Any, Any]],
         "battles": len(battles),
         "battle_winner": outcome.winner_agent_id(),
         "standings": sorted(standings.items(), key=lambda kv: (-kv[1], kv[0])),
+        "execution_digest": exec_digest,
         "replay_digest": outcome.match.replay_digest,
         "reincarnations": {k: v.manifest.reincarnation_id
                            for k, v in outcome.avatars.items()},
@@ -84,8 +97,66 @@ def simulate_full_stack(entries: list[tuple[str, Any, Any]],
             "shots": media["shots"],
             "accepted": media["accepted"],
             "rejected": media["rejected"],
+            "canonical_refs": {
+                agent_id: _count_refs(shots_dict, agent_id)
+                for agent_id, _, _ in entries
+            },
         },
     }
+
+
+def _execution_manifest_for(outcome, entries, seed):
+    """Build a MatchExecutionManifest for the battle's two entries."""
+    from .competition import make_entry, EntrySnapshot, build_execution_manifest
+    from .agent import AgentState
+    spec_map = {aid: spec for aid, spec, _ in entries}
+    agent_list = list(outcome.avatars.keys())
+    snapshots = {}
+    for aid in agent_list:
+        a = AgentState(aid)
+        spec = spec_map.get(aid)
+        if spec is None:
+            continue
+        snapshots[aid] = EntrySnapshot.from_entry(
+            make_entry(a, spec, body_version="R1"))
+    order = sorted(snapshots)
+    if len(order) < 2:
+        return None
+    rounds = outcome.match.rounds[-1].round_no if outcome.match.rounds else 3
+    return build_execution_manifest(
+        execution_id=f"exec-{outcome.match.match_id}",
+        entry_a=snapshots[order[0]], entry_b=snapshots[order[1]],
+        seed=seed + 5000, rounds=rounds,
+        challenge_nonce=f"{seed}|{order[0]}|{order[1]}")
+
+
+def _seed_visual_library(entries, seed: int):
+    """Generate canonical talisman + arena assets for each competitor."""
+    from .assets import AssetLibrary, VisualForge, VisualSpec
+    lib = AssetLibrary()
+    forge = VisualForge(lib)
+    body_versions = {}
+    for aid, spec, _ in entries:
+        bv = f"R{abs(hash(aid + str(seed))) % 20 + 1}"
+        body_versions[aid] = bv
+        forge.ensure_shot_assets([
+            VisualSpec(spec_id=f"vs-{aid}-talisman", entity_id=aid,
+                       asset_type="TALISMAN", mechanical_version=bv)
+        ])
+    forge.ensure_shot_assets([
+        VisualSpec(spec_id="vs-arena-s1", entity_id="arena-s1",
+                   asset_type="ARENA", mechanical_version="R1")
+    ])
+    return lib, body_versions
+
+
+def _count_refs(shots_dict, agent_id: str) -> int:
+    n = 0
+    for s in shots_dict["shots"]:
+        for r in s.get("references", []):
+            if agent_id in r.get("asset_key", ""):
+                n += 1
+    return n
 
 
 if __name__ == "__main__":
