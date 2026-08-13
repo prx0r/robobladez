@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robobladez"
+version = "0.2.0"
+description = "Deterministic RoboBlade competition and canon engine"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+robobladez = "robobladez.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

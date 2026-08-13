@@ -1,0 +1,23 @@
+# Runtime / build artifacts
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Local experiment output
+/out/
+/_out/
+/_out2/
+/_out3/
+/_audit/
+matrix.tsv
+
+# Archived source material (kept separately, not in this repo)
+source-material/
+
+# Local canon databases (regenerable)
+canon.sqlite3
+*.sqlite3

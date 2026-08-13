@@ -1,0 +1,1312 @@
+Here’s the complete roadmap I’d use from **where you are now** to a real RoboBladez product.
+
+## Phase 0 — Lock the constitution
+
+Do not add features until these stay invariant:
+
+```text
+same engine version
++ same arena
++ same body versions
++ same policy manifests
++ same seed
+=
+same canonical replay
+```
+
+Core rules:
+
+```text
+1. simulation decides truth
+2. policies act simultaneously
+3. committed policy cannot change mid-match
+4. between-match learning creates a new version
+5. media cannot rewrite canon
+6. daimon/lore is downstream of measured behavior
+```
+
+Deliverables:
+
+```text
+docs/CONSTITUTION.md
+docs/GAMEPLAY.md
+docs/PHYSICS_SCOPE.md
+versioned MatchResult schema
+replay digest verification
+```
+
+This is essentially v2 now.
+
+---
+
+# Phase 1 — Make the actual game fun
+
+This is the next thing to build.
+
+Do **not** touch RL, LTX, public submissions, or elaborate lore yet.
+
+## 1.1 Build 10–12 policy archetypes
+
+Examples:
+
+```text
+CENTER
+holds central control
+
+RUSH
+maximizes early contact
+
+ORBIT
+maintains tangential separation
+
+COUNTER
+punishes closing velocity
+
+EDGE-BAIT
+deliberately approaches rim to lure chase
+
+SPIN-SAVER
+minimizes actuator cost
+
+LATE-BURST
+conserves energy until opponent weakens
+
+PRESSURE
+constant controlled engagement
+
+FEINT
+switches behavior based on opponent response
+
+ADAPTIVE
+uses prior-round observations
+
+PROBER
+uses early rounds for information
+
+MIXED
+stochastic-looking but seed-deterministic policy
+```
+
+Every policy should be simple enough to inspect.
+
+## 1.2 Build body archetypes
+
+Start with maybe 8.
+
+```text
+HEAVY
+high mass
+high inertia
+low control
+
+LIGHT
+low mass
+high control
+lower collision stability
+
+WIDE
+larger radius
+more contact leverage
+
+COMPACT
+smaller target
+less leverage
+
+HIGH-SPIN
+strong endurance
+less acceleration
+
+GRIPPY
+high contact friction
+
+SLIPPERY
+low friction
+
+BALANCED
+baseline
+```
+
+No exotic abilities yet.
+
+## 1.3 Run the matrix
+
+With:
+
+```text
+12 policies
+×
+8 bodies
+×
+several seeds
+```
+
+you already have a serious experiment space.
+
+Build:
+
+```text
+scripts/run_matrix.py
+```
+
+Output:
+
+```text
+body
+policy
+opponent_body
+opponent_policy
+seed
+winner
+reason
+duration
+collisions
+spin remaining
+energy remaining
+```
+
+Use DuckDB or Parquet once this gets large.
+
+## 1.4 Diagnose whether the game is actually strategic
+
+Calculate:
+
+```text
+win-rate matrix
+body advantage
+policy advantage
+seed sensitivity
+match duration
+termination reasons
+collision count
+energy use
+center control
+```
+
+Most importantly:
+
+```text
+does A beat B
+does B beat C
+does C beat A
+```
+
+You want **non-transitivity**.
+
+Bad game:
+
+```text
+Policy X beats everything
+Body Y beats everything
+```
+
+Good game:
+
+```text
+Rush beats Spin-Saver
+Counter beats Rush
+Orbit beats Counter
+Pressure beats Orbit
+```
+
+### Exit condition
+
+Do not move on until:
+
+* several viable strategies exist;
+* body choice matters but does not decide everything;
+* strategy can overcome some mechanical disadvantages;
+* no universal dominant policy exists;
+* matches terminate in a healthy mixture of ring-out/spin-out/burst;
+* seeds affect details without making results meaningless.
+
+---
+
+# Phase 2 — Mechanical baseline system
+
+This is one of the unique RoboBladez mechanics.
+
+For each matchup:
+
+```text
+body A
+vs
+body B
+```
+
+run neutral/passive or standardized-control simulations.
+
+Generate:
+
+```text
+MechanicalMatchupReport
+```
+
+Example:
+
+```json
+{
+  "a": "boris-body-v3",
+  "b": "morty-body-v2",
+
+  "neutral_runs": 1000,
+
+  "win_probability": {
+    "a": 0.31,
+    "b": 0.61,
+    "draw": 0.08
+  },
+
+  "advantages": {
+    "a": [
+      "higher spin endurance",
+      "better center stability"
+    ],
+    "b": [
+      "higher mobility",
+      "better contact acceleration"
+    ]
+  },
+
+  "vulnerabilities": {
+    "a": ["rim chase"],
+    "b": ["late spin-out"]
+  }
+}
+```
+
+Both agents receive this before committing strategy.
+
+That makes the match about **reasoning against known mechanical asymmetry**.
+
+### Exit condition
+
+You can demonstrate:
+
+> weaker body wins because policy exploited opponent/body tendencies.
+
+That is a defining RoboBladez moment.
+
+---
+
+# Phase 3 — Proper policy SDK
+
+Right now policies are Python classes.
+
+Formalize the interface.
+
+```text
+robobladez-sdk/
+```
+
+Core contract:
+
+```python
+class RoboBladePolicy:
+    def initialize(self, match_context):
+        ...
+
+    def act(self, observation):
+        return Action(...)
+
+    def round_end(self, result):
+        ...
+
+    def match_end(self, result):
+        ...
+```
+
+Observation should include only legal information.
+
+Example:
+
+```json
+{
+  "time": 4.22,
+
+  "self": {
+    "position": [0.12, -0.06],
+    "velocity": [0.3, 0.1],
+    "spin": 488,
+    "energy": 72
+  },
+
+  "opponent": {
+    "position": [-0.08, 0.14],
+    "velocity": [-0.2, 0.4],
+    "spin": 431
+  },
+
+  "round": 3,
+
+  "history": {
+    "previous_round_winners": [
+      "boris",
+      "morty"
+    ]
+  }
+}
+```
+
+Action:
+
+```json
+{
+  "radial": 0.4,
+  "tangential": -0.3,
+  "torque": 0.2,
+  "boost": 0.6
+}
+```
+
+Version the SDK.
+
+```text
+rbz-policy-api-v1
+```
+
+---
+
+# Phase 4 — Sandboxed competitors
+
+Only now make external policies possible.
+
+Architecture:
+
+```text
+MATCH SERVER
+     │
+     ├── competitor process A
+     └── competitor process B
+```
+
+Protocol:
+
+```text
+Observation JSON
+↓
+competitor
+↓
+Action JSON
+```
+
+Enforce:
+
+```text
+CPU limit
+memory limit
+wall-clock timeout
+no network
+no arbitrary filesystem
+deterministic runtime
+```
+
+Competitor timeout:
+
+```text
+→ idle action
+```
+
+Repeated violation:
+
+```text
+→ match penalty / forfeit
+```
+
+This is where Robocode Tank Royale is the best precedent:
+
+[https://github.com/robocode-dev/tank-royale](https://github.com/robocode-dev/tank-royale)
+
+### Exit condition
+
+You can run two untrusted competitor packages without either touching the game process.
+
+---
+
+# Phase 5 — League + persistent agents
+
+Now RoboBladez becomes more than a simulator.
+
+Canonical tables:
+
+```text
+agents
+agent_versions
+bodies
+body_versions
+policies
+policy_versions
+matches
+rounds
+events
+rankings
+opponent_models
+behavior_profiles
+daimon_states
+```
+
+Each agent has:
+
+```text
+Genesis
+↓
+v1
+↓
+matches
+↓
+reflection
+↓
+v2
+↓
+matches
+↓
+v3
+```
+
+Never overwrite.
+
+Example:
+
+```text
+BORIS
+
+genesis
+  ↓
+policy-v1
+body-v1
+  ↓
+12 matches
+  ↓
+policy-v2
+body-v1
+  ↓
+24 matches
+  ↓
+policy-v3
+body-v2
+```
+
+## Rankings
+
+Use several.
+
+```text
+W/L
+Elo
+body-independent policy rating
+head-to-head matrix
+Alpha-Rank later
+```
+
+Elo is audience-friendly.
+
+Payoff matrices are strategically meaningful.
+
+---
+
+# Phase 6 — Agent learning
+
+Start simple.
+
+## 6.1 Opponent modelling
+
+Every competitor stores:
+
+```text
+opponent aggression
+center preference
+energy usage
+opening pattern
+response to pressure
+late-round behavior
+```
+
+Use Bayesian-ish counts or EWMA.
+
+No neural network required.
+
+Example:
+
+```text
+P(Morty rushes opening) = .72
+P(Morty retreats after losing R1) = .61
+```
+
+## 6.2 Post-match reflection
+
+Generate structured data:
+
+```json
+{
+  "match": "...",
+  "predictions": {
+    "rush_probability": 0.72
+  },
+  "observed": {
+    "rushed": true
+  },
+  "successful_actions": [],
+  "failed_assumptions": [],
+  "proposed_changes": []
+}
+```
+
+This can initially be deterministic analytics.
+
+LLM can later summarize/interpret.
+
+## 6.3 Parameter evolution
+
+Let agents mutate:
+
+```text
+thresholds
+utility weights
+opening strategy
+energy budget allocation
+fallback branches
+```
+
+Use evolutionary search.
+
+Example:
+
+```text
+parent policy
+↓
+8 mutations
+↓
+evaluate against historical opponents
+↓
+select robust offspring
+```
+
+Do not automatically pick “highest current win rate.”
+
+Use robustness:
+
+```text
+fitness =
+win rate
+− exploitability
++ diversity
++ robustness
+```
+
+---
+
+# Phase 7 — PSRO / meta evolution
+
+This is where it gets serious.
+
+Use OpenSpiel concepts:
+
+[https://github.com/google-deepmind/open_spiel](https://github.com/google-deepmind/open_spiel)
+
+Maintain a population:
+
+```text
+Boris-v3
+Boris-v5
+Boris-v8
+Morty-v4
+Alice-v6
+...
+```
+
+Build payoff matrix.
+
+```text
+            B3   B5   M4   A6
+B3           -   .4   .7   .2
+B5          .6    -   .5   .8
+M4          .3   .5    -   .7
+A6          .8   .2   .3    -
+```
+
+Then:
+
+```text
+new policy
+=
+best response to current meta
+```
+
+That gives actual evolutionary pressure.
+
+### Exit condition
+
+The league develops:
+
+```text
+meta
+counter-meta
+counter-counter-meta
+```
+
+without you scripting it.
+
+---
+
+# Phase 8 — Daimon emergence
+
+Only now.
+
+Do not assign daimons manually as gameplay truth.
+
+Maintain long-term phenotype:
+
+```text
+aggression
+patience
+mobility
+risk
+adaptability
+counter tendency
+center control
+resource efficiency
+unpredictability
+```
+
+EWMA over matches.
+
+Then project:
+
+```text
+Earth
+Water
+Fire
+Air
+Aether
+```
+
+Example:
+
+```text
+BORIS after 70 matches
+
+water   .48
+earth   .31
+air     .13
+fire    .06
+aether  .02
+```
+
+At stability threshold:
+
+```text
+manifestation event
+```
+
+The system can say:
+
+> Boris's daimon has stabilized.
+
+Then naming occurs.
+
+Possible mechanism:
+
+```text
+behavior phenotype
++
+agent history
++
+visual seed
++
+LLM naming
+=
+Penelope
+```
+
+Crucially:
+
+```text
+Penelope reflects Boris.
+Penelope does not secretly determine Boris.
+```
+
+unless you later deliberately promote abilities into a ruleset.
+
+---
+
+# Phase 9 — Signature move discovery
+
+Store windows around decisive events.
+
+Feature vector:
+
+```text
+relative position
+relative velocity
+spin states
+action history
+energy state
+opponent action
+outcome delta
+```
+
+Cluster recurring successful sequences.
+
+Example:
+
+```text
+Boris repeatedly:
+
+allows approach
+→ lateral orbit
+→ opponent overshoots center
+→ Boris counter-contacts
+→ opponent exits rim
+```
+
+After sufficient support:
+
+```text
+SIGNATURE_PATTERN_014
+confidence=.82
+matches=31
+```
+
+Then narrative engine names it:
+
+```text
+Slipstream
+```
+
+Then visual system gets a signature grammar.
+
+That is real emergent lore.
+
+---
+
+# Phase 10 — Narrative/canon engine
+
+Build:
+
+```text
+CanonGraph
+```
+
+You don't need Neo4j.
+
+Postgres is fine.
+
+Track derived relations:
+
+```text
+BORIS
+  defeated
+MORTY
+
+MORTY
+  countered
+ALICE
+
+BORIS
+  developed
+SLIPSTREAM
+
+ALICE
+  adopted
+EDGE-ORBIT-META
+```
+
+Narrative detectors:
+
+```text
+UPSET
+REVENGE
+STREAK
+DYNASTY
+META_SHIFT
+COUNTER_DISCOVERED
+SIGNATURE_EMERGED
+DAIMON_MANIFESTED
+RIVALRY
+BODY_EVOLUTION
+POLICY_REGRESSION
+COMEBACK
+```
+
+These events feed episodes.
+
+---
+
+# Phase 11 — Content compiler
+
+Input:
+
+```text
+MatchReplay
++
+SeasonState
++
+CharacterBible
+```
+
+Output:
+
+```text
+EpisodeSpec
+```
+
+Example:
+
+```json
+{
+  "hook": "Boris enters mechanically disadvantaged.",
+
+  "crux": "He predicts Morty will overcommit after winning the baseline.",
+
+  "beats": [
+    "...",
+    "...",
+    "..."
+  ],
+
+  "ending": "Boris reveals a recurring counter pattern."
+}
+```
+
+The model writing the episode cannot change:
+
+```text
+winner
+round order
+canonical turning points
+```
+
+---
+
+# Phase 12 — Visual asset bible
+
+Before LTX series production, establish canonical designs.
+
+Each competitor:
+
+```text
+CharacterAsset
+BladeAsset
+DaimonAsset
+SignatureMoveAsset
+```
+
+Version them.
+
+```text
+boris-character-v2
+boris-blade-v4
+penelope-v1
+slipstream-v2
+```
+
+Store reference images externally in R2.
+
+Also define:
+
+```text
+arena references
+camera grammar
+lighting grammar
+UI overlays
+```
+
+---
+
+# Phase 13 — LTX production
+
+Now rent GPU.
+
+Not before.
+
+Use:
+
+[https://github.com/Lightricks/LTX-2](https://github.com/Lightricks/LTX-2)
+
+and:
+
+[https://github.com/Lightricks/ComfyUI-LTXVideo](https://github.com/Lightricks/ComfyUI-LTXVideo)
+
+Pipeline:
+
+```text
+EpisodeSpec
+↓
+ShotGraph
+↓
+canonical refs
+↓
+ComfyUI workflow
+↓
+LTX
+↓
+visual QA
+↓
+retry failures
+↓
+FFmpeg
+```
+
+Each shot:
+
+```json
+{
+  "subjects": [
+    "boris-v2",
+    "morty-v3"
+  ],
+
+  "arena": "arena-01",
+
+  "event": "collision",
+
+  "start_state": "...",
+  "end_state": "...",
+
+  "camera": "low_tracking",
+
+  "duration": 6,
+
+  "constraints": [
+    "Morty exits right side",
+    "Boris remains in arena"
+  ]
+}
+```
+
+LTX is producing the **dramatic reconstruction**.
+
+Not solving the match.
+
+---
+
+# Phase 14 — QA system
+
+Automatic checks:
+
+```text
+correct character
+correct blade
+correct arena
+event direction
+winner continuity
+round chronology
+basic visual consistency
+```
+
+Failed clip:
+
+```text
+→ regenerate
+```
+
+Eventually use vision model to compare shot against canonical shot spec.
+
+---
+
+# Phase 15 — Website
+
+Only once there is real league data.
+
+Core pages:
+
+```text
+/
+live league
+
+/agents/boris
+history
+body
+daimon
+policy versions
+record
+rivals
+
+/matches/{id}
+raw replay
+stats
+policies
+episode
+
+/meta
+matchup matrix
+rankings
+strategy trends
+
+/episodes
+cinematic series
+```
+
+The nerd view matters.
+
+Expose:
+
+```text
+policy commitment
+replay digest
+engine version
+seed
+```
+
+So the show has verifiable underlying sport.
+
+---
+
+# Phase 16 — Public entrants
+
+Submission:
+
+```text
+GenesisSeed
+Character identity
+Blade configuration
+Policy package
+Visual seed
+```
+
+Then freeze genesis.
+
+Later evolution must occur via legal mechanisms.
+
+Provide:
+
+```bash
+git clone robobladez-agent-template
+```
+
+with:
+
+```text
+policy.py
+agent.yaml
+tests/
+README
+```
+
+Local testing:
+
+```bash
+rbz test-agent .
+```
+
+Submission:
+
+```bash
+rbz submit .
+```
+
+---
+
+# Phase 17 — Seasons
+
+Now create proper competitive structure.
+
+Example:
+
+```text
+QUALIFIERS
+
+16 entrants
+↓
+league
+
+TOP 8
+↓
+playoffs
+
+FINAL
+↓
+championship
+```
+
+Between seasons:
+
+```text
+body evolution allowed
+major policy evolution allowed
+new entrants
+ruleset changes
+```
+
+During season:
+
+```text
+controlled evolution
+```
+
+This prevents everything changing constantly.
+
+---
+
+# Phase 18 — Broader engine reuse
+
+Once RoboBladez is proven:
+
+```text
+core/
+  match
+  events
+  replay
+  policy
+  canon
+  story
+  media
+```
+
+can support other domains.
+
+Prehistoric:
+
+```text
+evidence-constrained bodies
+no artificial body evolution
+```
+
+Deep sea:
+
+```text
+ecological simulation
+```
+
+Robot Wars:
+
+```text
+evolvable morphologies
+```
+
+etc.
+
+But **do not generalize prematurely**.
+
+Make RoboBladez good first.
+
+---
+
+# Infrastructure roadmap
+
+Your laptop:
+
+```text
+SSH
+Git
+editor
+browser
+```
+
+CPU box:
+
+```text
+8–16 GB RAM
+4–8 cores
+
+engine
+tests
+league simulation
+Postgres
+DuckDB
+story compiler
+```
+
+GPU:
+
+```text
+rent only during rendering
+
+32–48GB VRAM initially
+```
+
+Storage:
+
+```text
+GitHub
+code
+
+Postgres
+canon
+
+R2
+replays/assets/videos
+
+persistent GPU volume
+LTX models
+```
+
+---
+
+# Repo structure by maturity
+
+```text
+robobladez/
+├── src/
+│   └── robobladez/
+│       ├── physics/
+│       ├── match/
+│       ├── policies/
+│       ├── sandbox/
+│       ├── league/
+│       ├── evolution/
+│       ├── analysis/
+│       ├── canon/
+│       ├── story/
+│       └── media/
+│
+├── sdk/
+│
+├── web/
+│
+├── workers/
+│   └── ltx/
+│
+├── tests/
+│   ├── unit/
+│   ├── determinism/
+│   ├── fuzz/
+│   ├── balance/
+│   └── replay/
+│
+├── scripts/
+│   ├── matrix.py
+│   ├── tournament.py
+│   ├── audit.py
+│   └── render_episode.py
+│
+└── docs/
+```
+
+---
+
+# The order I would actually execute
+
+Do these in this exact order:
+
+```text
+1. 10–12 policies
+2. 8 body archetypes
+3. 100k matchup experiment
+4. tune game until counters emerge
+5. mechanical baseline reports
+6. policy SDK
+7. sandbox
+8. league DB
+9. persistent agent versions
+10. opponent modelling
+11. evolutionary policy search
+12. PSRO/meta analysis
+13. phenotype history
+14. daimon emergence
+15. signature detection
+16. canon/narrative detectors
+17. episode compiler
+18. canonical visual assets
+19. LTX pipeline
+20. website
+21. public entrant SDK
+22. first real season
+```
+
+The biggest mistake now would be jumping to #18 because it is visually exciting.
+
+The actual moat and magic lives in **#1–15**.
+
+If those are real, LTX turns RoboBladez into a show.
+
+If those are fake, LTX just makes a pretty AI animation.
