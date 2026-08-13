@@ -62,9 +62,12 @@ Status enum:
 ## Physics
 - id: BLADE_BODY
   status: VERIFIED
-  implementation: src/robobladez/model.py (BladeSpec)
-  tests: tests/test_engine.py
+  implementation: src/robobladez/model.py (BladeSpec), src/robobladez/competition.py (BodyVersion/BodyProposal)
+  tests: tests/test_engine.py, tests/test_provenance.py
   canonical_status: [GAMEPLAY]
+  notes: blade is a deterministic material thing; BodyVersion is versioned+hash-bound;
+         BodyProposal lets Agent propose while Daimon only advises (never edits);
+         editing is slow/public/append-only (docs/BLADE.md)
 
 - id: LAUNCH
   status: VERIFIED

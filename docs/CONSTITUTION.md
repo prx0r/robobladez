@@ -18,3 +18,6 @@ These rules are harder than any implementation detail.
 12. **Once visual reality is established, downstream generators reference it rather than reinventing it.**
 13. **A visual asset records the mechanical version it represents (image ↔ gameplay truth stay coupled).**
 14. **Reincarnation visual overlays are presentation, not body mutation.**
+15. **A blade is a deterministic material thing: immutable within a match, hash-bound, and public once announced.**
+16. **Only the Agent may propose a new body version; the Daimon may only advise; the Human may approve/allocate.**
+17. **A blade's editing is slow (between-match), public (versioned), and append-only — never fast, secret, or in-place.**

@@ -16,6 +16,62 @@ from .model import BladeSpec
 
 
 @dataclass(frozen=True)
+class BodyVersion:
+    """A versioned, hash-bound blade (the announced, immutable body).
+
+    The blade is a deterministic material thing. A BodyVersion is that thing
+    frozen at a point in time: an immutable (agent, body_id, version) with a
+    content digest over the physical parameters. Public once announced; never
+    edited in place.
+    """
+    agent_id: str
+    body_id: str
+    body: BladeSpec
+    version: str = "R1"
+    parent_version: str = ""
+    created_at: str = ""
+
+    def body_digest(self) -> str:
+        return _blade_digest(self.body)
+
+    def version_key(self) -> str:
+        return f"{self.agent_id}:{self.body_id}:{self.version}"
+
+    def to_dict(self) -> dict[str, Any]:
+        d = asdict(self)
+        d.pop("body", None)
+        d["body_digest"] = self.body_digest()
+        d["version_key"] = self.version_key()
+        return d
+
+
+@dataclass(frozen=True)
+class BodyProposal:
+    """Agent proposes a NEW body version; Daimon attaches advice (never edits).
+
+    Editing regime: only the Agent proposes. The Daimon may attach advice (a
+    string / rationale) but CANNOT change the body parameters. Human approval /
+    resource allocation is tracked separately. A proposal becomes a BodyVersion
+    only once accepted.
+    """
+    agent_id: str
+    proposed: BodyVersion
+    rationale: str = ""
+    daimon_advice: str = ""       # Daimon influence is advisory, non-causal
+    human_approval: str = ""      # pending | approved | rejected
+    status: str = "pending"       # pending | accepted | rejected
+
+    def accept(self) -> "BodyProposal":
+        return BodyProposal(self.agent_id, self.proposed, self.rationale,
+                            self.daimon_advice, self.human_approval, "accepted")
+
+    def to_dict(self) -> dict[str, Any]:
+        d = asdict(self)
+        d["proposed"] = self.proposed.to_dict()
+        return d
+
+
+@dataclass(frozen=True)
 class CompetitionEntry:
     """A competitor's identity + body + daimon + author, as a unit."""
     agent_id: str
@@ -116,7 +172,11 @@ class EntrySnapshot:
 
 def make_entry(agent: AgentState, body: BladeSpec, body_version: str = "R1",
                daimon_id: str = "", visual_identity_version: str = "R0") -> CompetitionEntry:
-    """Build a CompetitionEntry from an AgentState + a concrete body."""
+    """Build a CompetitionEntry from an AgentState + a concrete body.
+
+    `body_version` is the announced public version (e.g. "R1"). The body_digest
+    binds this entry to the exact material blade that fought.
+    """
     daimon = agent.daimon
     stage_names = ("latent", "proto", "emerging", "manifest", "developed", "ascended")
     stage_idx = stage_names.index(daimon.stage) if daimon.stage in stage_names else 0
@@ -125,7 +185,7 @@ def make_entry(agent: AgentState, body: BladeSpec, body_version: str = "R1",
         agent_version="v1",
         body_id=body.id,
         body_version=body_version,
-        body_digest=_body_digest(body),
+        body_digest=_blade_digest(body),
         daimon_stage=daimon.stage,
         daimon_id=daimon_id or (daimon.name.lower() if daimon.name else ""),
         daimon_version=f"R{stage_idx}",
@@ -134,16 +194,28 @@ def make_entry(agent: AgentState, body: BladeSpec, body_version: str = "R1",
     )
 
 
-def _body_digest(body: BladeSpec) -> str:
+def _blade_digest(body: BladeSpec) -> str:
+    """Content digest over ALL physical parameters (the material truth)."""
     import hashlib
     body_params = {
         "mass": body.mass, "radius": body.radius,
-        "contact_friction": body.contact_friction, "launch_spin": body.launch_spin,
-        "control_force": body.control_force, "inertia_factor": body.inertia_factor,
+        "inertia_factor": body.inertia_factor, "restitution": body.restitution,
+        "contact_friction": body.contact_friction, "linear_drag": body.linear_drag,
+        "spin_drag": body.spin_drag, "control_force": body.control_force,
+        "control_torque": body.control_torque, "max_spin": body.max_spin,
+        "launch_spin": body.launch_spin, "launch_speed": body.launch_speed,
+        "energy_capacity": body.energy_capacity, "integrity": body.integrity,
     }
     return hashlib.sha256(
         json.dumps(body_params, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()[:16]
+
+
+def make_body_version(agent_id: str, body: BladeSpec, version: str = "R1",
+                      parent_version: str = "") -> BodyVersion:
+    """Freeze a blade into a public, hash-bound BodyVersion."""
+    return BodyVersion(agent_id=agent_id, body_id=body.id, body=body,
+                       version=version, parent_version=parent_version)
 
 
 @dataclass(frozen=True)

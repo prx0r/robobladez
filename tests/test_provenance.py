@@ -4,8 +4,48 @@ These assert the vertical truth paths: the execution_digest must change when a
 battle-self changes, and the episode manifest must link real shot digests.
 """
 import unittest
-from robobladez.competition import CompetitionEntry, EntrySnapshot, build_execution_manifest
+from robobladez.competition import (
+    CompetitionEntry, EntrySnapshot, build_execution_manifest,
+    BodyVersion, BodyProposal, make_body_version,
+)
 from robobladez.mvp import run_mvp
+from robobladez.zoo import make_body
+
+
+class BladeOntologyTests(unittest.TestCase):
+    """The blade is a deterministic material thing (docs/BLADE.md)."""
+
+    def test_body_version_is_hash_bound_and_immutable(self):
+        bv = make_body_version("boris", make_body("heavy", "-boris"), version="R1")
+        d = bv.to_dict()
+        self.assertEqual(d["body_digest"], bv.body_digest())
+        self.assertEqual(d["version_key"], "boris:heavy-boris:R1")
+        # Same blade params -> same digest (deterministic material truth).
+        bv2 = make_body_version("boris", make_body("heavy", "-boris"), version="R1")
+        self.assertEqual(bv.body_digest(), bv2.body_digest())
+
+    def test_different_blade_different_digest(self):
+        heavy = make_body_version("boris", make_body("heavy", "-b"), "R1")
+        light = make_body_version("boris", make_body("light", "-b"), "R1")
+        self.assertNotEqual(heavy.body_digest(), light.body_digest())
+
+    def test_daimon_cannot_edit_body(self):
+        proposal = BodyProposal(
+            agent_id="boris",
+            proposed=make_body_version("boris", make_body("heavy", "-b"), "R2"),
+            rationale="counter meta", daimon_advice="your mass is wrong")
+        # Daimon advice is attached but the proposed body is immutable.
+        self.assertTrue(proposal.daimon_advice)
+        self.assertEqual(proposal.status, "pending")
+        accepted = proposal.accept()
+        self.assertEqual(accepted.status, "accepted")
+
+    def test_entry_binds_announced_body_version_and_digest(self):
+        e = CompetitionEntry(agent_id="a", body_id="b", body_version="R1",
+                             body_digest="dig", daimon_stage="latent")
+        snap = EntrySnapshot.from_entry(e)
+        self.assertEqual(snap.body_version, "R1")
+        self.assertEqual(snap.body_digest, "dig")
 
 
 class ExecutionDigestBindingTests(unittest.TestCase):

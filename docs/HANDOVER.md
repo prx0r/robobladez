@@ -107,6 +107,7 @@ Public entrant SDK, website, spectator frontend, PSRO, Alpha-Rank, 100 bodies,
 - `docs/ROADMAP.md` — phase status
 - `docs/CONSTITUTION.md` — hard contract (incl. visual-asset rules)
 - `docs/MEDIA_PIPELINE.md`, `docs/MEDIA_STRATEGY.md`, `docs/VISUAL_ASSETS.md` — media layer
+- `docs/BLADE.md` — what a blade is (material, editing regime, game theory)
 - `docs/TESTING.md` — strict test notes
 - `docs/mechanisms/` — 29 mechanism specs + `index.yaml` implementation status
 - `docs/ltx/`, `docs/ltx-2.5/` — LTX production research packs
