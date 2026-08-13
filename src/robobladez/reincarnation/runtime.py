@@ -70,6 +70,15 @@ class ReincarnationRuntime:
                 break
         return act
 
+    def public_config(self) -> dict[str, Any]:
+        """Policy-protocol compatibility: expose the manifest as a config."""
+        return {
+            "format": self.manifest.format,
+            "reincarnation_id": self.manifest.reincarnation_id,
+            "compute_class": self.manifest.compute_class,
+            "initial_state": self.manifest.initial_state,
+        }
+
     def _eval(self, cond, ctx) -> bool:
         if cond is None:
             return False

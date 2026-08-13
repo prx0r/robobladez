@@ -1,0 +1,1634 @@
+Yes. The right way to build this is as a **canonical visual asset system with autonomous generation, validation, reuse, and versioning**.
+
+The goal is not:
+
+```text
+prompt → image → use once
+```
+
+It is:
+
+```text
+GAME STATE / CANON
+↓
+VISUAL SPEC
+↓
+ASSET GENERATOR
+↓
+CANDIDATES
+↓
+VALIDATION
+↓
+CANONICAL ASSET VERSION
+↓
+ASSET GRAPH
+↓
+SHOT COMPILER
+↓
+IMAGE / VIDEO / UI / POSTER / THUMBNAIL
+↓
+REUSE
+```
+
+The asset library becomes part of RoboBladez’s persistent world state.
+
+# 1. Core principle
+
+Every persistent thing in RoboBladez should have **two representations**:
+
+```text
+STRUCTURAL STATE
+what it actually is
+
+VISUAL STATE
+how that thing currently appears
+```
+
+For example:
+
+```text
+BORIS_TALISMAN_R17
+```
+
+has:
+
+```text
+mechanical spec:
+mass
+radius
+contact geometry
+abilities
+materials class
+affinity
+
+visual spec:
+silhouette
+surface materials
+markings
+palette
+motifs
+damage state
+Daimon influence
+```
+
+The mechanical object is canonical gameplay truth.
+
+The visual object is canonical presentation truth.
+
+Neither should be reconstructed from prose every time.
+
+---
+
+# 2. The reusable asset ontology
+
+I would create these top-level asset classes.
+
+```text
+VisualAsset
+├── IdentityAsset
+├── BodyAsset
+├── DaimonAsset
+├── WorldAsset
+├── EffectAsset
+├── StateAsset
+├── CompositionAsset
+└── EditorialAsset
+```
+
+## IdentityAsset
+
+Persistent identity:
+
+```text
+AGENT_PORTRAIT
+AGENT_ICON
+SIGIL
+FACTION_MARK
+NAMEPLATE_STYLE
+COLOR_SYSTEM
+SYMBOL_SYSTEM
+```
+
+Example:
+
+```text
+boris/
+├ portrait-neutral-R3
+├ portrait-competitive-R2
+├ sigil-R1
+├ icon-R1
+└ palette-R2
+```
+
+---
+
+# 3. Body assets
+
+Talisman assets need far more structure than a single hero image.
+
+```text
+TALISMAN
+├── HERO
+├── TOP_ORTHO
+├── SIDE_ORTHO
+├── FRONT_ORTHO
+├── REAR_ORTHO
+├── 3Q_FRONT
+├── 3Q_REAR
+├── DETAIL
+├── MATERIAL_REFERENCE
+├── DAMAGE_STATE
+└── EFFECT_ANCHOR_MAP
+```
+
+Minimum canonical pack:
+
+```text
+top
+side
+3/4
+hero
+material close-up
+transparent/background-isolated image
+```
+
+Better later:
+
+```text
+8-view turnaround
+```
+
+This gives future image/video generation much stronger identity conditioning.
+
+---
+
+# 4. Daimon assets
+
+Daimons should have an explicit **visual lifecycle** tied to their actual mechanical/emergent lifecycle.
+
+```text
+LATENT
+↓
+PROTO
+↓
+EMERGING
+↓
+MANIFEST
+↓
+DEVELOPED
+↓
+ASCENDED
+```
+
+Each stage can have its own asset pack.
+
+Example:
+
+```text
+PENELOPE
+├ latent-symbol-R1
+├ emerging-apparition-R1
+├ manifest-body-R3
+├ developed-body-R4
+└ ascended-body-R1
+```
+
+And every manifested Daimon should have:
+
+```text
+neutral view
+full-body
+portrait
+manifestation pose
+combat pose
+silhouette
+glyph
+aura/effect reference
+```
+
+The Daimon does **not** regenerate randomly after every evolution event.
+
+Instead:
+
+```text
+DaimonState changes
+↓
+VisualEvolutionRequest created
+↓
+new visual candidates
+↓
+new canonical version
+```
+
+---
+
+# 5. World assets
+
+Arenas and locations should be first-class persistent objects.
+
+```text
+WORLD
+├── ARENA
+├── TRAINING_SPACE
+├── CHARACTER_SPACE
+├── DAIMON_REALM
+├── LEAGUE_LOCATION
+└── TRANSITION_SPACE
+```
+
+Arena pack:
+
+```text
+ARENA_S1_R4
+├ wide establishing
+├ center floor
+├ rim
+├ entrance A
+├ entrance B
+├ overhead
+├ audience/background
+├ lighting reference
+└ material reference
+```
+
+Then LTX never needs to invent the arena from scratch.
+
+---
+
+# 6. Effect assets
+
+This is one of the most important reusable libraries.
+
+Create:
+
+```text
+EffectGrammar
+```
+
+rather than one-off effects.
+
+Example:
+
+```text
+effects/
+├ impact/
+├ fire/
+├ water/
+├ air/
+├ earth/
+├ aether/
+├ phase/
+├ shield/
+├ burst/
+├ daimon-manifest/
+└ reincarnation/
+```
+
+Each effect grammar should contain:
+
+```text
+shape language
+color rules
+particle behavior
+light behavior
+motion behavior
+surface interaction
+sound identity
+allowed variation
+forbidden variation
+```
+
+Example:
+
+```text
+MOMENTUM_REDIRECT_VISUAL_R2
+
+visual:
+curved compression wave
+brief silver-blue arc
+no explosion
+direction follows transferred momentum
+
+timing:
+starts 60ms before contact
+peak at contact
+dissipates within 300ms
+```
+
+Now every occurrence looks like the same ability.
+
+---
+
+# 7. State assets
+
+This is the piece that makes autonomous video generation much easier.
+
+Persistent objects can have **temporary state assets**.
+
+For example:
+
+```text
+BORIS_TALISMAN_R17
++
+MATCH_STATE_184
+↓
+StateAsset
+```
+
+State describes:
+
+```text
+orientation
+damage
+energy level
+active ability
+Daimon manifestation
+lighting context
+temporary markings
+```
+
+So you can generate:
+
+```text
+boris-r17-energy-low
+boris-r17-phase-active
+boris-r17-damaged
+```
+
+without changing the underlying canonical body identity.
+
+Think:
+
+```text
+BASE ASSET
++
+STATE DELTA
+=
+SHOT REFERENCE
+```
+
+Very powerful.
+
+---
+
+# 8. Canonical asset object
+
+I would make this a real schema.
+
+```text
+CanonicalVisualAsset
+
+asset_id
+entity_id
+asset_type
+version
+
+canonical_status:
+    DRAFT
+    CANDIDATE
+    APPROVED
+    SUPERSEDED
+    RETIRED
+
+identity_version
+mechanical_version
+
+prompt_spec_id
+reference_asset_ids
+
+generator_family
+generator_version
+seed
+generation_parameters
+
+file_uri
+thumbnail_uri
+alpha_uri
+depth_uri
+mask_uri
+
+view:
+    hero
+    front
+    side
+    top
+    three_quarter
+    detail
+
+canonicality:
+    CANONICAL
+    PROJECTION
+    EDITORIAL
+
+created_at
+supersedes
+superseded_by
+
+qa_score
+review_status
+```
+
+Critical:
+
+```text
+mechanical_version
+```
+
+must be recorded.
+
+That lets us say:
+
+```text
+this image represents:
+BORIS_TALISMAN mechanical R17
+visual R4
+```
+
+---
+
+# 9. VisualSpec
+
+Before generating any image, create a **machine-readable VisualSpec**.
+
+Never make the prompt the source of truth.
+
+Example:
+
+```yaml
+entity_id: boris:talisman
+mechanical_version: R17
+
+class: talisman
+
+identity:
+  silhouette: compact-wide
+  visual_weight: center-heavy
+  symmetry: radial
+  personality: controlled-aggressive
+
+materials:
+  primary: dark brushed metal
+  secondary: polished silver
+  accent: translucent mineral
+
+palette:
+  base: near-black
+  secondary: silver
+  accent: pale-blue
+
+motifs:
+  - concentric cuts
+  - restrained wave geometry
+  - central sigil
+
+forbidden:
+  - exposed gears
+  - fire motifs
+  - organic flesh
+  - text
+  - asymmetric blade count
+
+required_views:
+  - top
+  - side
+  - three_quarter
+  - hero
+```
+
+Then:
+
+```text
+VisualSpec
+↓
+PromptCompiler
+↓
+provider-specific prompt
+```
+
+This is what makes the system autonomous and replaceable.
+
+---
+
+# 10. PromptCompiler
+
+Have provider-specific compilers.
+
+```text
+VisualSpec
+        ↓
+┌─────────────────────────┐
+│ OpenAIImageCompiler     │
+│ FluxCompiler            │
+│ OtherImageCompiler      │
+└─────────────────────────┘
+```
+
+The domain object does not care what generator creates it.
+
+Same principle as LTX.
+
+The compiler generates:
+
+```text
+positive prompt
+reference attachments
+view request
+background instructions
+consistency constraints
+```
+
+---
+
+# 11. Generation jobs
+
+The autonomous system creates jobs.
+
+```text
+AssetGenerationJob
+
+job_id
+visual_spec_id
+asset_type
+required_view
+reference_assets
+provider
+generator
+seed
+status
+candidate_count
+```
+
+Example:
+
+```text
+BORIS_TALISMAN_R17
+requires:
+4 views
+
+↓
+
+jobs:
+top
+side
+3/4
+hero
+```
+
+Generate maybe:
+
+```text
+4 candidates per view
+```
+
+Then validate.
+
+---
+
+# 12. Automatic validation
+
+Do not make human approval the first filter.
+
+Use a QA pipeline.
+
+```text
+generated candidate
+↓
+identity QA
+↓
+structure QA
+↓
+consistency QA
+↓
+view QA
+↓
+artifact QA
+↓
+score
+```
+
+Tests can include:
+
+```text
+correct entity?
+correct silhouette?
+correct palette?
+correct number of major features?
+no forbidden elements?
+matches previous canonical version?
+matches mechanical spec?
+background clean enough?
+usable resolution?
+```
+
+For Daimons:
+
+```text
+correct stage?
+correct motifs?
+recognizable continuity with prior stage?
+```
+
+For arenas:
+
+```text
+layout consistent?
+lighting correct?
+camera view actually requested?
+```
+
+---
+
+# 13. Human approval should be sparse
+
+The autonomous loop should be:
+
+```text
+generate 16
+↓
+reject 10 automatically
+↓
+rank remaining 6
+↓
+pick strongest 2 automatically
+↓
+human approves 1
+```
+
+Eventually, for low-risk assets:
+
+```text
+automatic approval
+```
+
+But for:
+
+```text
+new main character
+new Daimon manifestation
+new talisman generation
+new arena
+```
+
+human review makes sense.
+
+---
+
+# 14. Asset relationships
+
+Build an actual **visual asset graph**.
+
+Example:
+
+```text
+BORIS
+├── has_visual → BORIS_PORTRAIT_R3
+├── controls → BORIS_TALISMAN_R17
+│                 └── represented_by → TALISMAN_VIS_R4
+│
+├── bonded_with → PENELOPE
+│                 └── represented_by → PENELOPE_VIS_R3
+│
+└── associated_effect → WATER_REDIRECT_R2
+```
+
+Then shot generation becomes graph resolution.
+
+---
+
+# 15. AssetResolver
+
+The Shot Compiler should ask:
+
+```text
+give me the best visual references for:
+BORIS
+TALISMAN R17
+PENELOPE MANIFEST
+ARENA S1
+MOMENTUM REDIRECT
+```
+
+AssetResolver returns:
+
+```text
+hero
+orthographic
+state ref
+effect ref
+environment ref
+```
+
+Example:
+
+```python
+resolve_assets(
+    entity="boris",
+    body_version="R17",
+    daimon_stage="MANIFEST",
+    ability="momentum_redirect",
+    arena="arena-s1",
+)
+```
+
+returns a deterministic bundle.
+
+No prompt author manually searches folders.
+
+---
+
+# 16. Shot asset package
+
+Before LTX sees anything, compile:
+
+```text
+ShotAssetBundle
+```
+
+Example:
+
+```yaml
+shot_id: m027-shot-14
+
+subjects:
+  boris:
+    base: asset://boris-talisman-r17/hero
+    side: asset://boris-talisman-r17/side
+    state: asset://boris-talisman-r17/energy-low
+
+  morty:
+    base: asset://morty-talisman-r12/hero
+
+daimon:
+  penelope:
+    asset: asset://penelope-manifest-r3
+
+environment:
+  asset: asset://arena-s1-r4/wide
+
+effect:
+  momentum_redirect:
+    asset: asset://effects/momentum-redirect-r2
+
+canonical_events:
+  - event:m027:184
+```
+
+Now LTX gets a coherent package.
+
+---
+
+# 17. Autonomous scene construction
+
+The whole content system becomes:
+
+```text
+MATCH ENDS
+↓
+SignificanceDetector
+↓
+StoryCompiler
+↓
+ShotCompiler
+↓
+AssetResolver
+↓
+missing assets?
+```
+
+If NO:
+
+```text
+render
+```
+
+If YES:
+
+```text
+AssetPlanner
+↓
+generate missing assets
+↓
+QA
+↓
+canonize
+↓
+resume render
+```
+
+That is the autonomous loop.
+
+---
+
+# 18. AssetPlanner
+
+This is an important agent.
+
+Example:
+
+```text
+Shot requires:
+Boris R17
+Morty R12
+Penelope MANIFEST
+Arena S1
+new ability "Undertow"
+```
+
+Resolver finds everything except:
+
+```text
+UNDERTOW_EFFECT
+```
+
+AssetPlanner creates:
+
+```text
+EffectVisualSpec
+↓
+generation jobs
+↓
+candidate evaluation
+↓
+UNDERTOW_EFFECT_R1
+```
+
+Then rendering continues.
+
+The system is **self-expanding**.
+
+---
+
+# 19. Visual evolution should follow canon events
+
+Important automation.
+
+Certain events trigger asset evolution.
+
+```text
+BODY_VERSION_CREATED
+→ create new talisman visual job
+
+DAIMON_MANIFESTED
+→ create Daimon canonical pack
+
+DAIMON_ASCENDED
+→ create evolved Daimon pack
+
+ABILITY_UNLOCKED
+→ create effect grammar
+
+SEASON_STARTED
+→ create arena/season pack
+
+SIGNATURE_CONFIRMED
+→ possibly create signature visual motif
+
+MAJOR_DAMAGE_STATE
+→ create damage-state asset
+```
+
+That ties the visual world directly to the game world.
+
+---
+
+# 20. Don't regenerate unchanged things
+
+Critical economic principle:
+
+```text
+if asset exists:
+    reuse
+```
+
+The content compiler should never regenerate Boris just because a new episode exists.
+
+Instead:
+
+```text
+BORIS_R17
+```
+
+may appear in 300 shots.
+
+Only generate a new body asset when:
+
+```text
+BORIS_R18
+```
+
+exists.
+
+---
+
+# 21. Separate identity continuity from style
+
+Another important layer:
+
+```text
+IdentityAsset
++
+StyleProfile
+=
+RenderedAsset
+```
+
+So Boris can appear in:
+
+```text
+cinematic realism
+poster art
+schematic diagram
+comic
+league card
+UI icon
+```
+
+without changing who Boris is.
+
+Example:
+
+```text
+BORIS_TALISMAN_R17
+```
+
+can have:
+
+```text
+REALISTIC_R3
+POSTER_R1
+DIAGRAM_R2
+ICON_R1
+```
+
+all derived from one identity spec.
+
+---
+
+# 22. Style profiles
+
+Create reusable:
+
+```text
+StyleProfile
+```
+
+Examples:
+
+```text
+RBZ_CINEMATIC_S01
+RBZ_POSTER_S01
+RBZ_UI_S01
+RBZ_DAIMON_REALM_S01
+RBZ_ANALYSIS_MODE
+```
+
+Contains:
+
+```text
+rendering medium
+contrast
+lighting
+lens grammar
+palette transforms
+texture
+background behavior
+composition
+```
+
+Then generation becomes:
+
+```text
+VisualSpec
++
+StyleProfile
++
+ViewSpec
+```
+
+not hand-written prompting.
+
+---
+
+# 23. Arena/season visual grammar
+
+A season can define:
+
+```text
+SeasonVisualGrammar
+```
+
+Example:
+
+```yaml
+season: S01
+
+materials:
+  - black ceramic
+  - brushed steel
+  - translucent glass
+
+lighting:
+  key: cool white
+  accent: pale cyan
+
+architecture:
+  - concentric
+  - monumental
+  - minimal
+
+forbidden:
+  - fantasy castles
+  - cyberpunk clutter
+  - neon signage
+```
+
+Now:
+
+```text
+arena
+posters
+UI
+broadcast graphics
+Daimon spaces
+```
+
+feel like one product.
+
+---
+
+# 24. Image-to-image evolution
+
+When Boris evolves from R17 → R18:
+
+Do not restart from text.
+
+Use:
+
+```text
+R17 canonical asset
++
+mechanical delta
++
+VisualEvolutionSpec
+↓
+image edit / conditioned generation
+↓
+R18
+```
+
+Example delta:
+
+```text
+radius +4%
+outer ring reinforced
+one additional momentum vent
+same central sigil
+same materials
+```
+
+This preserves lineage visually.
+
+---
+
+# 25. Daimon visual evolution works the same way
+
+```text
+PENELOPE_R3
++
+DaimonState delta:
+EMERGING → MANIFEST
+↓
+VisualEvolutionSpec
+↓
+PENELOPE_R4
+```
+
+Maintain:
+
+```text
+same face identity
+same glyph family
+same palette
+same symbolic geometry
+```
+
+while allowing:
+
+```text
+more defined body
+larger manifestation
+new visual ability marks
+```
+
+So audiences can literally see evolution.
+
+---
+
+# 26. Reincarnation can affect temporary appearance
+
+This is particularly interesting.
+
+The persistent body may remain:
+
+```text
+BORIS TALISMAN R17
+```
+
+but reincarnation R28 might have a visual signature.
+
+So:
+
+```text
+BodyAsset
++
+ReincarnationVisualOverlay
+```
+
+Example:
+
+```text
+R28 strategy = deceptive counter-control
+```
+
+could earn a subtle:
+
+```text
+silver ring pattern
+specific launch aura
+```
+
+But be careful:
+
+it should be **presentation**, not arbitrary body mutation.
+
+Thus:
+
+```text
+REINCARNATION OVERLAY
+≠
+BODY VERSION
+```
+
+---
+
+# 27. File/storage structure
+
+I would store it like:
+
+```text
+visual/
+├── agents/
+│   └── boris/
+│       ├── identity/
+│       └── versions/
+│
+├── talismans/
+│   └── boris/
+│       └── R17/
+│           ├── spec.json
+│           ├── canonical/
+│           ├── states/
+│           └── derived/
+│
+├── daimons/
+│   └── penelope/
+│       ├── manifest/
+│       └── ascended/
+│
+├── worlds/
+├── arenas/
+├── effects/
+├── styles/
+└── editorial/
+```
+
+Actual binaries in R2.
+
+Metadata/database remains canonical.
+
+---
+
+# 28. Database tables
+
+Minimum:
+
+```text
+visual_specs
+visual_assets
+visual_asset_versions
+visual_asset_relations
+generation_jobs
+generation_candidates
+asset_reviews
+style_profiles
+effect_grammars
+shot_asset_bundles
+```
+
+Potentially:
+
+```text
+visual_evolution_events
+```
+
+---
+
+# 29. Provenance matters even for fiction
+
+Store:
+
+```text
+generator
+model
+seed
+prompt
+references
+timestamp
+parent asset
+edit chain
+```
+
+Why?
+
+Because when:
+
+```text
+Boris R18 looks wrong
+```
+
+you want to know exactly how it was produced.
+
+And later, if a better image model appears:
+
+```text
+regenerate derived asset
+```
+
+without losing canon.
+
+---
+
+# 30. Canonical asset hashing
+
+Use immutable asset IDs.
+
+Example:
+
+```text
+asset:
+rbz://talisman/boris/R17/hero@sha256...
+```
+
+Then shot manifests pin exact assets.
+
+That makes video generations reproducible/auditable.
+
+---
+
+# 31. Autonomous generation service
+
+One service:
+
+```text
+VisualForge
+```
+
+Interface:
+
+```python
+forge.ensure_visual(entity_spec)
+forge.ensure_view(entity_id, view)
+forge.ensure_state(entity_id, state)
+forge.ensure_effect(effect_id)
+forge.ensure_environment(environment_id)
+```
+
+The caller doesn't care whether something already exists.
+
+Example:
+
+```python
+assets = forge.ensure_shot_assets(shot_spec)
+```
+
+VisualForge:
+
+```text
+checks registry
+↓
+returns existing assets
+OR
+generates missing ones
+↓
+validates
+↓
+stores
+↓
+returns bundle
+```
+
+That is the reusable autonomous structure.
+
+---
+
+# 32. Full autonomy loop
+
+Eventually:
+
+```text
+                     GAME ENGINE
+                         │
+                         ▼
+                     CANON EVENTS
+                         │
+                         ▼
+                   Story Compiler
+                         │
+                         ▼
+                    Shot Compiler
+                         │
+                         ▼
+                   Asset Resolver
+                         │
+             ┌───────────┴────────────┐
+             │                        │
+         FOUND                      MISSING
+             │                        │
+             │                  Asset Planner
+             │                        │
+             │                  VisualSpec
+             │                        │
+             │                  Image Generator
+             │                        │
+             │                       QA
+             │                        │
+             │                    Canonize
+             └─────────────┬──────────┘
+                           ▼
+                   ShotAssetBundle
+                           │
+                           ▼
+                       LTX 2.5
+                           │
+                           ▼
+                         QA
+                           │
+                           ▼
+                       EPISODE
+```
+
+That's the system.
+
+---
+
+# 33. What should be generated at genesis?
+
+When a new competitor is created:
+
+```text
+GENESIS EVENT
+```
+
+automatically produce:
+
+### Agent
+
+```text
+portrait
+icon
+sigil
+```
+
+### Initial Talisman
+
+```text
+hero
+top
+side
+3/4
+isolated
+```
+
+### Visual identity
+
+```text
+palette
+material vocabulary
+motif vocabulary
+```
+
+But:
+
+```text
+NO fully manifested Daimon
+```
+
+if the Daimon is latent.
+
+Maybe only:
+
+```text
+latent glyph
+subtle motif
+```
+
+The visual world should respect mechanics.
+
+---
+
+# 34. What should happen when Daimon emerges?
+
+Event:
+
+```text
+DAIMON_MANIFESTED
+```
+
+triggers:
+
+```text
+DaimonVisualSpec
+↓
+candidate generation
+↓
+QA
+↓
+manifestation pack
+↓
+new canonical visual identity
+↓
+story significance event
+```
+
+That makes a Daimon reveal genuinely meaningful.
+
+The audience has never seen it before because **the asset literally didn't exist before the event**.
+
+That's excellent.
+
+---
+
+# 35. What should happen when body evolves?
+
+```text
+BODY_EVOLUTION_APPROVED
+```
+
+contains:
+
+```text
+parent R17
+new mechanical R18
+delta
+```
+
+VisualForge:
+
+```text
+load R17
+↓
+VisualEvolutionCompiler
+↓
+preserve identity constraints
+↓
+represent mechanical changes
+↓
+generate R18 candidates
+↓
+QA
+↓
+approve
+```
+
+Again, lineage is real.
+
+---
+
+# 36. What is autonomous vs human?
+
+I'd define this clearly.
+
+| Task                               | Autonomous |    Human |
+| ---------------------------------- | ---------: | -------: |
+| determine missing asset            |        yes |       no |
+| construct VisualSpec               |        yes | optional |
+| generate candidates                |        yes |       no |
+| license/provenance                 |        yes |       no |
+| obvious QA rejection               |        yes |       no |
+| rank candidates                    |        yes |       no |
+| approve trivial states             |        yes | optional |
+| approve new main Talisman          |    suggest |  **yes** |
+| approve first Daimon manifestation |    suggest |  **yes** |
+| approve new season aesthetic       |    suggest |  **yes** |
+| reuse approved asset               |        yes |       no |
+| generate LTX shot refs             |        yes |       no |
+
+Humans concentrate on **high-leverage canon decisions**.
+
+Everything repetitive is automated.
+
+---
+
+# 37. MVP version
+
+Do not build all of this immediately.
+
+MVP:
+
+```text
+VisualSpec
+CanonicalVisualAsset
+StyleProfile
+AssetResolver
+VisualForge
+ShotAssetBundle
+```
+
+Support only:
+
+```text
+AGENT_PORTRAIT
+TALISMAN
+DAIMON
+ARENA
+EFFECT
+```
+
+Required views:
+
+```text
+HERO
+SIDE
+TOP
+THREE_QUARTER
+```
+
+Statuses:
+
+```text
+DRAFT
+APPROVED
+SUPERSEDED
+```
+
+Then prove:
+
+```text
+1 competitor genesis
+↓
+automatic canonical pack
+
+body evolves
+↓
+automatic new version derived from old
+
+Daimon manifests
+↓
+automatic new asset family
+
+match produces story
+↓
+ShotCompiler resolves existing assets
+
+new effect required
+↓
+VisualForge generates missing effect
+
+LTX receives complete reference bundle
+```
+
+If that works, the whole visual engine thesis is proven.
+
+---
+
+# The central architectural rule
+
+This is the thing I'd put in the constitution:
+
+> **Generative models may propose visual reality. Only the canon system may establish it.**
+
+And:
+
+> **Once visual reality is established, downstream generators reference it rather than reinventing it.**
+
+That gives RoboBladez an accumulating world instead of an endless stream of disconnected AI generations.
+
+Over time you end up with:
+
+```text
+100 Agents
++
+300 body versions
++
+80 Daimons
++
+40 arenas/worlds
++
+200 effect grammars
++
+thousands of state assets
+```
+
+all connected to actual competition history.
+
+At that point the visual library itself becomes a huge persistent IP asset — and the autonomous production system can create new episodes largely by resolving and recombining canonical objects rather than designing the world from scratch every time.

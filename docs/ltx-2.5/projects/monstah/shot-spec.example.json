@@ -1,0 +1,25 @@
+{
+  "shot_id": "deepblue-abyssal-001",
+  "project": "monstah",
+  "canonicality": "RECONSTRUCTION",
+  "entity_versions": [
+    "taxon:example:R4"
+  ],
+  "environment_version": "env:abyssal:R2",
+  "event_ids": [],
+  "prompt": "A wide underwater documentary shot follows the approved marine-animal reconstruction moving slowly across a dark abyssal plain. The animal preserves the same body proportions and markings as the reference image, swimming left to right with restrained motion. Fine suspended particles drift through cold water while the seabed remains distant. The camera tracks parallel at a steady distance. A narrow cool light fades rapidly into darkness. Audio: low underwater ambience and subtle water movement, with no invented animal vocalization.",
+  "duration_s": 8,
+  "fps": 24,
+  "aspect_ratio": "16:9",
+  "control_mode": "I2V",
+  "constraints": [
+    "preserve reconstruction silhouette",
+    "do not invent additional organisms",
+    "do not depict unsupported behavior"
+  ],
+  "qa": [
+    "body plan matches reconstruction",
+    "environment matches bound reconstruction",
+    "render adds no factual claim"
+  ]
+}

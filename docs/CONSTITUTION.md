@@ -14,3 +14,7 @@ These rules are harder than any implementation detail.
 9. **Between-match evolution creates a new version; it never edits the old competitor retrospectively.**
 10. **No component gets called "emergent" unless the behavior is measured from interaction rather
     than hard-coded as lore.**
+11. **Generative models may propose visual reality; only the canon system may establish it.**
+12. **Once visual reality is established, downstream generators reference it rather than reinventing it.**
+13. **A visual asset records the mechanical version it represents (image ↔ gameplay truth stay coupled).**
+14. **Reincarnation visual overlays are presentation, not body mutation.**

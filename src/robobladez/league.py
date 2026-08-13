@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 
 from .agent import AgentState, agent_snapshot
-from .battle import run_battle, ReportAwareStrategist
+from .battle import run_battle
 from .canon import CanonStore
 from .engine import run_match
 from .model import ArenaSpec, BladeSpec
@@ -55,8 +55,6 @@ def run_season(entries: list[tuple[str, BladeSpec, Policy]],
             agents[aid], specs[aid], agents[bid], specs[bid], arena,
             mechanical_runs=mechanical_runs, strategic_rounds=rounds,
             base_seed=seed + i * 100003,
-            strategist_a=ReportAwareStrategist(),
-            strategist_b=ReportAwareStrategist(),
             registry=registry, salience_detector=salience,
         )
         match_outcomes.append(outcome)

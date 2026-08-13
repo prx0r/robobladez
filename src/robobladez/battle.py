@@ -35,67 +35,33 @@ from .canon import CanonStore
 from .engine import run_match
 from .mechanical import MechanicalMatchupReport, mechanical_report
 from .model import ArenaSpec, BladeSpec
-from .policy import Policy, commitment
+from .reincarnation.normalize import commitment as reincarnation_commitment
+from .reincarnation_author import ReincarnationAuthor
 from .replay import save_match
 from .salience import SalienceDetector
 from .signatures import SignatureRegistry
-from .zoo import POLICY_ZOO
-
-
-class Strategist(Protocol):
-    """Given the mechanical report, choose a battle-avatar policy."""
-    def choose(self, report: MechanicalMatchupReport, me: str, opponent: str) -> Policy: ...
-
-
-@dataclass
-class ReportAwareStrategist:
-    """A simple, deterministic strategist that reads the report."""
-    id: str = "report-aware-v1"
-
-    def choose(self, report: MechanicalMatchupReport, me: str, opponent: str) -> Policy:
-        opp = report.per_body.get(opponent, {})
-        my = report.per_body.get(me, {})
-        choice = "counter"
-        if opp.get("avg_speed", 0.5) < 0.5:
-            choice = "pressure"
-        elif opp.get("avg_spin", 500) < 540:
-            choice = "counter"
-        elif opp.get("center_fraction", 0.0) > 0.4:
-            choice = "orbit"
-        elif my.get("avg_spin", 500) > 600:
-            choice = "spin-saver"
-        for name, fact in POLICY_ZOO:
-            if name == choice:
-                return fact()
-        return POLICY_ZOO[3][1]()
-
-
-@dataclass
-class StaticStrategist:
-    """Always picks the same policy — for comparison / baseline."""
-    name: str = "counter"
-    id: str = "static"
-
-    def choose(self, report: MechanicalMatchupReport, me: str, opponent: str) -> Policy:
-        for n, f in POLICY_ZOO:
-            if n == self.name:
-                return f()
-        return POLICY_ZOO[3][1]()
 
 
 @dataclass
 class BattleAvatar:
-    """A locked, specialized match policy for one competitor (rm8 typed)."""
+    """A locked, match-specific reincarnation (rm7/rm8).
+
+    This is the compiled, sealed battle-self: a ReincarnationManifest + its
+    commitment hash. It is NOT a pick from a policy zoo; it is the executable
+    incarnation the Agent authored for this contest.
+    """
     agent_id: str
     body_id: str
-    policy: Policy
+    manifest: Any          # ReincarnationManifest
     commitment: str
+    runtime: Any = None    # ReincarnationRuntime (set at compile)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "body_id": self.body_id,
-            "policy_id": self.policy.id,
+            "reincarnation_id": self.manifest.reincarnation_id,
+            "compute_class": self.manifest.compute_class,
             "commitment": self.commitment,
         }
 
@@ -240,14 +206,16 @@ def run_battle(agent_a: AgentState, spec_a: BladeSpec,
                arena: ArenaSpec | None = None,
                mechanical_runs: int = 60, strategic_rounds: int = 5,
                base_seed: int = 9000,
-               strategist_a: Strategist | None = None,
-               strategist_b: Strategist | None = None,
+               author_a: ReincarnationAuthor | None = None,
+               author_b: ReincarnationAuthor | None = None,
                registry: SignatureRegistry | None = None,
                salience_detector: SalienceDetector | None = None,
                out_dir: str | None = None) -> BattleOutcome:
     arena = arena or ArenaSpec()
-    strat_a = strategist_a or ReportAwareStrategist()
-    strat_b = strategist_b or ReportAwareStrategist()
+    author_a = author_a or ReincarnationAuthor(agent_version=f"{agent_a.agent_id}@1",
+                                               author=agent_a.agent_id)
+    author_b = author_b or ReincarnationAuthor(agent_version=f"{agent_b.agent_id}@1",
+                                               author=agent_b.agent_id)
     registry = registry or SignatureRegistry()
     salience_detector = salience_detector or SalienceDetector()
 
@@ -255,18 +223,27 @@ def run_battle(agent_a: AgentState, spec_a: BladeSpec,
     report = mechanical_report(spec_a, spec_b, arena,
                                runs=mechanical_runs, base_seed=base_seed, rounds=3)
 
-    # ---- Phase 2: sealed strategic response (typed by agent) ----
+    # ---- Phase 2: sealed strategic response (reincarnation) ----
+    # Agents author a Reincarnation from the public mechanical report. Commit
+    # before the exact simulation seed is used (seed timing handled by caller).
     nonce = f"{base_seed}|{spec_a.id}|{spec_b.id}"
-    pa = strat_a.choose(report, spec_a.id, spec_b.id)
-    pb = strat_b.choose(report, spec_b.id, spec_a.id)
+    man_a = author_a.reincarnate(report, spec_a.id, spec_b.id, reincarnation_id=f"{agent_a.agent_id}-r1")
+    man_b = author_b.reincarnate(report, spec_b.id, spec_a.id, reincarnation_id=f"{agent_b.agent_id}-r1")
+    rt_a = author_a.compile(man_a)
+    rt_b = author_b.compile(man_b)
+    # The runtime is Policy-compatible (decide(obs) -> Action).
+    rt_a.id = man_a.reincarnation_id
+    rt_b.id = man_b.reincarnation_id
     avatars = {
-        agent_a.agent_id: BattleAvatar(agent_a.agent_id, spec_a.id, pa, commitment(pa, nonce)),
-        agent_b.agent_id: BattleAvatar(agent_b.agent_id, spec_b.id, pb, commitment(pb, nonce)),
+        agent_a.agent_id: BattleAvatar(agent_a.agent_id, spec_a.id, man_a,
+                                       reincarnation_commitment(man_a, nonce), rt_a),
+        agent_b.agent_id: BattleAvatar(agent_b.agent_id, spec_b.id, man_b,
+                                       reincarnation_commitment(man_b, nonce), rt_b),
     }
 
-    # ---- Phase 3: best-of-N with locked avatars ----
+    # ---- Phase 3: best-of-N with locked reincarnation runtimes ----
     match = run_match(base_seed + 5000, arena, spec_a, spec_b,
-                      pa, pb, strategic_rounds)
+                      rt_a, rt_b, strategic_rounds)
 
     analysis = analyze_behavior(match)
 

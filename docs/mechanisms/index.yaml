@@ -256,6 +256,15 @@ Status enum:
   implementation: src/robobladez/story.py
   canonical_status: [NARRATIVE]
 
+- id: VISUAL_ASSET_SYSTEM
+  status: IMPLEMENTED
+  implementation: src/robobladez/assets.py
+  canonical_status: [INFRA, NARRATIVE]
+  notes: VisualSpec/VisualAsset/StyleProfile/AssetLibrary/AssetResolver/VisualForge/
+         ShotAssetBundle; canonical vs editorial; generate-once-reuse;
+         image<->mechanical version coupling
+  references: docs/VISUAL_ASSETS.md
+
 - id: SHOT_GRAPH
   status: IMPLEMENTED
   implementation: src/robobladez/shots.py, src/robobladez/media.py
@@ -266,5 +275,6 @@ Status enum:
   status: IMPLEMENTED
   implementation: src/robobladez/media.py
   canonical_status: [INFRA, NARRATIVE]
-  notes: ShotSpec/RenderRequest/RenderJob/RenderArtifact/QAVerdict; control hierarchy
-  references: docs/ltx/integration/RENDERER-AGNOSTIC-ARCHITECTURE.md
+  notes: ShotSpec/RenderRequest/RenderJob/RenderArtifact/QAVerdict; control hierarchy;
+         RenderQueue (retake/reframe); simulate_render (no LTX); LTX-2.3/2.5 replaceable
+  references: docs/ltx/integration/RENDERER-AGNOSTIC-ARCHITECTURE.md, docs/MEDIA_STRATEGY.md

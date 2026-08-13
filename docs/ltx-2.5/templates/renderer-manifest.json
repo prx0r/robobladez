@@ -1,0 +1,12 @@
+{
+  "renderer_family": "ltx",
+  "renderer_version": "2.5",
+  "backend": "api|comfyui|local",
+  "model_id": "VERIFY_FROM_OFFICIAL_2.5_DOCS",
+  "workflow_id": "",
+  "workflow_version": "",
+  "checkpoint_digest": "",
+  "seed": 0,
+  "profile": "draft|final|retake|control-heavy",
+  "audio": true
+}

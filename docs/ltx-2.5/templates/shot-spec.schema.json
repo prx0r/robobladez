@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canonical ShotSpec",
+  "type": "object",
+  "required": [
+    "shot_id",
+    "project",
+    "canonicality",
+    "prompt",
+    "duration_s",
+    "control_mode",
+    "constraints"
+  ],
+  "properties": {
+    "shot_id": {
+      "type": "string"
+    },
+    "project": {
+      "enum": [
+        "robobladez",
+        "monstah",
+        "other"
+      ]
+    },
+    "canonicality": {
+      "enum": [
+        "CANONICAL_EVENT",
+        "RECONSTRUCTION",
+        "NARRATIVE_PROJECTION",
+        "COUNTERFACTUAL",
+        "EDITORIAL_BRIDGE"
+      ]
+    },
+    "entity_versions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "environment_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prompt": {
+      "type": "string"
+    },
+    "duration_s": {
+      "type": "number"
+    },
+    "fps": {
+      "type": "integer"
+    },
+    "aspect_ratio": {
+      "type": "string"
+    },
+    "control_mode": {
+      "enum": [
+        "T2V",
+        "I2V",
+        "FIRST_LAST",
+        "KEYFRAME",
+        "DEPTH",
+        "POSE",
+        "EDGE",
+        "MOTION",
+        "ICLORA",
+        "V2V",
+        "RETAKE",
+        "EXTEND",
+        "REFRAME"
+      ]
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "qa": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

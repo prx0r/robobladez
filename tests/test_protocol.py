@@ -1,7 +1,8 @@
 import unittest, json
 from robobladez.agent import AgentState, DaimonState, agent_snapshot
 from robobladez.mechanical import mechanical_report
-from robobladez.battle import run_battle, ReportAwareStrategist, StaticStrategist
+from robobladez.battle import run_battle
+from robobladez.reincarnation_author import ReincarnationAuthor
 from robobladez.zoo import make_body
 from robobladez.model import ArenaSpec
 
@@ -36,17 +37,20 @@ class BattleTests(unittest.TestCase):
         self.assertIn("avatars", d)
         self.assertEqual(len(outcome.avatars), 2)
         self.assertEqual(outcome.match.rounds[0].seed, 77 + 5000 + 1000003)
-        # Every avatar policy was committed.
+        # Every avatar is a committed reincarnation (not a zoo pick).
         for av in outcome.avatars.values():
             self.assertTrue(av.commitment)
+            self.assertTrue(av.manifest.reincarnation_id)
 
-    def test_strategists(self):
+    def test_reincarnation_author(self):
         report = mechanical_report(make_body("balanced"), make_body("heavy"),
                                    ArenaSpec(max_seconds=2), runs=3, rounds=1)
-        rp = ReportAwareStrategist()
-        sp = StaticStrategist("orbit")
-        self.assertTrue(rp.choose(report, "balanced", "heavy").id)
-        self.assertEqual(sp.choose(report, "a", "b").id, "orbit")
+        author = ReincarnationAuthor(agent_version="boris@1", author="boris")
+        man = author.reincarnate(report, "balanced", "heavy")
+        self.assertEqual(man.format, "RBZ-RC-1")
+        self.assertGreaterEqual(len(man.states), 2)
+        rt = author.compile(man)
+        self.assertEqual(rt.current_state, man.initial_state)
 
 
 class DaimonTests(unittest.TestCase):
