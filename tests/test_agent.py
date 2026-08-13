@@ -1,5 +1,5 @@
 import unittest
-from robobladez.agent import AgentState, DaimonState, agent_snapshot
+from robobladez.agent import AgentState, DaimonState, HumanInteractionEvent, agent_snapshot
 from robobladez.model import BladeSpec, ArenaSpec
 from robobladez.policy import CounterPolicy, AggressivePolicy
 from robobladez.engine import run_match
@@ -45,6 +45,15 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(snap["agent_id"], "a")
         self.assertIn("snapshot_hash", snap)
         self.assertEqual(snap["status"], "NARRATIVE_PROJECTION")
+
+    def test_human_interaction_is_append_only(self):
+        a = AgentState("boris")
+        a.add_interaction(HumanInteractionEvent(
+            type="MENTOR_ADVICE", human="owner-001", agent="boris",
+            content="attack early", adopted=False))
+        self.assertEqual(len(a.interactions), 1)
+        self.assertIn("type", a.interactions[0])
+        self.assertEqual(a.profile()["interaction_count"], 1)
 
 
 class SignatureTests(unittest.TestCase):

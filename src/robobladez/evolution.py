@@ -70,7 +70,8 @@ def reflect(match: Any, self_id: str, opponent_id: str) -> PostMatchReflection:
 
 def evolve_agent(agent: AgentState, match: Any, self_id: str,
                  opponent_id: str, opponent_agent: AgentState | None,
-                 match_affinities: dict[str, float]) -> PostMatchReflection:
+                 match_affinities: dict[str, float],
+                 has_signature: bool = False, salient: bool = False) -> PostMatchReflection:
     opponent_daimon = opponent_agent.daimon if opponent_agent else agent.daimon
     reflection = reflect(match, self_id, opponent_id)
     # Reflect as the persistent character, not the temporary blade id.
@@ -82,5 +83,7 @@ def evolve_agent(agent: AgentState, match: Any, self_id: str,
         opponent_daimon=opponent_daimon,
         result=match.winner,
         reflection=reflection.to_dict(),
+        has_signature=has_signature,
+        salient=salient,
     )
     return reflection

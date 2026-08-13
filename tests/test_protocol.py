@@ -50,13 +50,23 @@ class BattleTests(unittest.TestCase):
 
 
 class DaimonTests(unittest.TestCase):
-    def test_naming_at_stage2(self):
+    def test_naming_at_manifest(self):
         d = DaimonState()
-        for _ in range(5):
-            d.update({"earth": 1, "water": 0, "fire": 0, "air": 0, "aether": 0}, alpha=0.5)
-        self.assertGreaterEqual(d.manifestation_stage, 2)
+        # 40+ battles, 2+ signatures, 1+ salient -> MANIFEST (stage 3)
+        for i in range(45):
+            d.update({"earth": 1, "water": 0, "fire": 0, "air": 0, "aether": 0},
+                     alpha=0.5, has_signature=(i % 10 == 0), salient=(i % 20 == 0))
+        self.assertEqual(d.stage, "manifest")
         self.assertIsNotNone(d.name)
-        self.assertEqual(d.visual_version, "v2")
+
+    def test_structural_stages_not_linear_xp(self):
+        d = DaimonState()
+        for _ in range(60):
+            d.update({"earth": 1, "water": 0, "fire": 0, "air": 0, "aether": 0},
+                     alpha=0.5)
+        # Many battles but no signatures/salient events -> cannot reach MANIFEST.
+        self.assertEqual(d.stage, "proto")
+        self.assertIsNone(d.name)
 
     def test_snapshot(self):
         s = agent_snapshot(AgentState("x"), 1)

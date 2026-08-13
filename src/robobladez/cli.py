@@ -39,7 +39,7 @@ def _battle(out: str) -> dict:
         "daimons": {
             k: {"dominant": v.daimon.dominant(),
                 "affinities": v.daimon.affinities,
-                "stage": v.daimon.manifestation_stage,
+                "stage": v.daimon.stage,
                 "name": v.daimon.name}
             for k, v in (("boris", boris), ("morty", morty))
         },

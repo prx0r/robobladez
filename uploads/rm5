@@ -1,0 +1,1046 @@
+Yes. The main thing missing now is **a mechanism specification corpus**.
+
+You have the thesis, architecture, roadmap, and some code. What you do **not** yet have is one authoritative technical document per mechanism stating:
+
+```text
+purpose
+inputs
+state
+allowed actions
+transition rules
+invariants
+failure modes
+telemetry
+tests
+versioning
+what is canonical
+what is narrative-only
+```
+
+The old source files contain fragments of these mechanisms, but they are scattered across `complete gameplay...`, `robobladez.txt`, `q2`, `Battle Star Boris`, the Architect docs, and the thesis. There is no clean modern mechanism bible yet.
+
+I would create exactly this tree:
+
+```text
+docs/
+└── mechanisms/
+    ├── 00-MECHANISM-SPEC-TEMPLATE.md
+    │
+    ├── competition/
+    │   ├── MATCH-LIFECYCLE.md
+    │   ├── MECHANICAL-BASELINE.md
+    │   ├── POLICY-COMMIT-REVEAL.md
+    │   ├── SIMULTANEOUS-DECISION.md
+    │   ├── ROUND-MEMORY.md
+    │   ├── WIN-CONDITIONS.md
+    │   └── REPLAY-VERIFICATION.md
+    │
+    ├── physics/
+    │   ├── BLADE-BODY.md
+    │   ├── LAUNCH.md
+    │   ├── SPIN-DYNAMICS.md
+    │   ├── CONTACT-COLLISION.md
+    │   ├── STADIUM.md
+    │   ├── ENERGY.md
+    │   ├── INTEGRITY-BURST.md
+    │   └── RINGOUT-SPINOUT.md
+    │
+    ├── intelligence/
+    │   ├── OBSERVATION-MODEL.md
+    │   ├── ACTION-MODEL.md
+    │   ├── POLICY-RUNTIME.md
+    │   ├── OPPONENT-MODEL.md
+    │   ├── PREMATCH-PLANNING.md
+    │   ├── POSTMATCH-REFLECTION.md
+    │   └── POLICY-EVOLUTION.md
+    │
+    ├── character/
+    │   ├── AGENT-IDENTITY.md
+    │   ├── GENESIS-SEED.md
+    │   ├── AGENT-VERSIONING.md
+    │   ├── BEHAVIOR-PHENOTYPE.md
+    │   ├── DAIMON-EMERGENCE.md
+    │   ├── SIGNATURE-MOVES.md
+    │   └── RELATIONSHIPS-RIVALRIES.md
+    │
+    ├── progression/
+    │   ├── BODY-EVOLUTION.md
+    │   ├── ABILITY-SYSTEM.md
+    │   ├── ABILITY-PROGRESSION.md
+    │   ├── META-EVOLUTION.md
+    │   └── SEASON-RULES.md
+    │
+    ├── league/
+    │   ├── MATCHMAKING.md
+    │   ├── RANKINGS.md
+    │   ├── PAYOFF-MATRIX.md
+    │   ├── ALPHA-RANK.md
+    │   ├── TOURNAMENTS.md
+    │   └── PUBLIC-ENTRANTS.md
+    │
+    ├── canon/
+    │   ├── EVENT-MODEL.md
+    │   ├── CANON-REDUCERS.md
+    │   ├── VERSIONING.md
+    │   ├── CORRECTIONS.md
+    │   └── AUDITABILITY.md
+    │
+    └── media/
+        ├── SIGNIFICANCE-DETECTION.md
+        ├── STORY-COMPILER.md
+        ├── SERIES-BIBLE.md
+        ├── SHOT-GRAPH.md
+        ├── LTX-PROJECTION.md
+        └── MEDIA-QA.md
+```
+
+That is the missing layer.
+
+## The mechanisms I think you are still under-specifying
+
+The biggest ones are these.
+
+### 1. Mechanical baseline
+
+This is central enough to deserve its own full protocol.
+
+You need to define:
+
+```text
+What is neutral?
+How many runs?
+What seed set?
+Are policies completely disabled?
+Is standardized control used?
+What information is revealed?
+Can agents inspect raw trajectories?
+Can they inspect opponent body parameters?
+How is uncertainty reported?
+```
+
+A proper output:
+
+```json
+{
+  "matchup": ["boris-body-v4", "morty-body-v2"],
+  "ruleset": "baseline-v1",
+  "runs": 1000,
+  "seed_set": "public-baseline-2026-s01",
+  "results": {
+    "boris": 0.31,
+    "morty": 0.62,
+    "draw": 0.07
+  },
+  "metrics": {
+    "collision_advantage": {},
+    "spin_endurance": {},
+    "center_stability": {},
+    "rim_vulnerability": {}
+  }
+}
+```
+
+Then this becomes **public evidence**, not just a warm-up round.
+
+---
+
+### 2. Information model
+
+This is huge and not fully nailed down.
+
+You need to specify exactly what each agent knows.
+
+There should be explicit classes:
+
+```text
+PUBLIC BEFORE MATCH
+
+arena
+rules
+body geometry
+body public stats
+historical matches
+mechanical baseline
+public rankings
+
+PRIVATE BEFORE MATCH
+
+own internal memory
+own opponent model
+own policy history
+
+OBSERVABLE DURING MATCH
+
+positions
+velocities
+spin
+energy?
+integrity?
+ability state?
+opponent internal state? NO
+```
+
+This determines the actual game theory.
+
+Without this document you don't really know whether RoboBladez is:
+
+```text
+perfect information
+imperfect information
+partial observation
+```
+
+or some hybrid.
+
+---
+
+### 3. Policy timing semantics
+
+You need an exact definition of:
+
+```text
+tick rate
+observation time
+policy decision time
+action application time
+physics resolution time
+```
+
+Something like:
+
+```text
+STATE(t)
+
+↓ freeze state
+
+Observation_A(t)
+Observation_B(t)
+
+↓ independently compute
+
+Action_A(t)
+Action_B(t)
+
+↓ both committed
+
+VALIDATE
+
+↓ simultaneously apply
+
+PHYSICS(t → t+1)
+
+↓
+
+STATE(t+1)
+```
+
+No ambiguity.
+
+This is the heart of fairness.
+
+---
+
+### 4. Match adaptation
+
+This is currently one of the most important unresolved design choices.
+
+There are three possible models:
+
+```text
+A. Fully sealed static policy
+
+B. Sealed code + mutable internal state
+
+C. Recommit policy between rounds
+```
+
+I think the best RoboBladez model is:
+
+```text
+MATCH POLICY CODE
+locked
+
+PRIVATE MATCH MEMORY
+mutable through committed code
+
+ROUND-BOUNDARY MEMORY
+allowed
+
+POLICY REWRITE
+not allowed until next match
+```
+
+Then a 5-round match actually tests:
+
+> how good a learning machine did you submit?
+
+not:
+
+> who has a better LLM making fresh decisions between rounds?
+
+That needs a full spec.
+
+---
+
+### 5. Policy sandbox determinism
+
+This will matter massively later.
+
+Need to define:
+
+```text
+Can policies use random?
+```
+
+Probably yes only through:
+
+```text
+policy_rng
+```
+
+seeded by the engine.
+
+Not:
+
+```python
+random.random()
+os.urandom()
+time.time()
+```
+
+Otherwise rerunning a canonical match may fail.
+
+You need:
+
+```text
+deterministic SDK
+no wall clock
+no network
+no nondeterministic syscalls
+limited CPU
+limited memory
+```
+
+Very important.
+
+---
+
+### 6. Body design space
+
+Right now `BladeSpec` is still basically a handful of scalars.
+
+Eventually you need a true **body grammar**.
+
+Something like:
+
+```text
+BladeBody
+├── core
+├── ring
+├── contact surfaces
+├── tip
+├── mass distribution
+└── actuator package
+```
+
+Potential design parameters:
+
+```text
+total mass
+radius
+radial mass profile
+moment of inertia
+contact polygon
+contact friction
+restitution
+tip friction
+tip geometry
+height
+center of mass
+spin direction
+actuator strength
+energy capacity
+```
+
+Then enforce a construction budget.
+
+Otherwise every body eventually converges to:
+
+```text
+max everything
+```
+
+So you need a constrained design economy:
+
+```text
+mass budget
+volume budget
+actuator budget
+energy budget
+ability budget
+```
+
+This is a major missing mechanism.
+
+---
+
+### 7. Body evolution legality
+
+When can a blade change?
+
+Possible clean model:
+
+```text
+WITHIN MATCH
+body frozen
+
+BETWEEN MATCHES
+minor tuning only
+
+BETWEEN SEASONS
+major redesign allowed
+```
+
+Or:
+
+```text
+evolution points earned
+```
+
+Need to choose.
+
+Otherwise persistent identity becomes meaningless because Boris can become an entirely different body every fight.
+
+---
+
+### 8. Abilities / “superpowers”
+
+You have fragments of this in `q2`, but it needs a modern rewrite.
+
+Every ability needs:
+
+```text
+AbilitySpec
+
+id
+version
+activation_condition
+energy_cost
+cooldown
+duration
+target
+state_transition
+counterplay
+telemetry
+visual_projection
+legality
+```
+
+Example:
+
+```text
+PHASE SHIFT
+
+mechanical:
+collision response multiplier → 0 for 100ms
+
+cost:
+30 energy
+
+cooldown:
+8 seconds
+
+constraint:
+cannot activate within rim zone
+
+counterplay:
+opponent can predict activation window
+```
+
+Not:
+
+> quantum tunneling because Qiskit says so.
+
+The fictional explanation can still be quantum.
+
+The mechanic stays explicit.
+
+---
+
+### 9. Ability acquisition
+
+This is separate from abilities themselves.
+
+Critical question:
+
+> Where do new abilities come from?
+
+Possible models:
+
+```text
+A. fixed ability library
+B. evolution unlock tree
+C. agent proposes new ability, engine compiler validates it
+D. signature move eventually promotes into legal ability
+```
+
+C is potentially incredibly interesting.
+
+Agent says:
+
+```json
+{
+  "proposed_ability": {
+    "effect": "temporary friction reduction",
+    "duration": 0.15,
+    "energy_cost": 25
+  }
+}
+```
+
+Then an **Ability Compiler** maps it into legal bounded mechanics.
+
+That gives creative evolution without letting an LLM rewrite physics.
+
+This deserves a whole subsystem.
+
+---
+
+### 10. Signature moves
+
+This mechanism needs more rigor than “cluster patterns.”
+
+Define:
+
+```text
+candidate window
+decisive delta
+minimum support
+cross-opponent robustness
+novelty threshold
+false-discovery threshold
+stability period
+```
+
+A real signature should require:
+
+```text
+recurring pattern
++
+successful outcome
++
+multiple opponents
++
+statistical support
+```
+
+Otherwise every random combo becomes a “signature.”
+
+---
+
+### 11. Daimon stabilization
+
+Likewise:
+
+```text
+when does the daimon become real in canon?
+```
+
+Need exact thresholds.
+
+Example:
+
+```text
+minimum 20 matches
+dominant affinity > .40
+dominant affinity stable for 10 matches
+phenotype drift < threshold
+signature consistency > threshold
+```
+
+Then:
+
+```text
+DAIMON_MANIFESTED
+```
+
+becomes a canonical career event.
+
+That could be awesome.
+
+---
+
+### 12. Daimon evolution
+
+After manifestation, can it change?
+
+Probably yes.
+
+Potential stages:
+
+```text
+LATENT
+↓
+EMERGING
+↓
+MANIFEST
+↓
+DEVELOPED
+↓
+ASCENDED
+```
+
+But these need to correspond to measurable milestones, not anime power creep.
+
+---
+
+### 13. Character personality
+
+You still need to specify how much is seeded versus inferred.
+
+I would do:
+
+```text
+GENESIS PRIORS
+
+risk_tolerance
+exploration
+aggression
+patience
+adaptation_rate
+resource_patience
+social style
+
+↓
+
+ACTUAL HISTORY
+
+↓
+
+OBSERVED CHARACTER
+```
+
+So the seed nudges.
+
+History determines.
+
+---
+
+### 14. Opponent model
+
+This needs a precise data structure.
+
+For example:
+
+```text
+OpponentModel
+
+opponent_id
+
+opening_distribution
+response_to_center_pressure
+response_to_rim_pressure
+boost_usage
+ability_timing
+round_adaptation
+body_preferences
+policy_family_probs
+
+confidence
+sample_size
+last_updated
+```
+
+This is one of the most important mechanisms because it produces the recursive game theory.
+
+---
+
+### 15. Strategic deception
+
+This is potentially a whole unique game mechanism.
+
+Need to decide whether an agent can deliberately condition its public history.
+
+Example:
+
+```text
+Boris shows defensive tendencies
+for 12 matches
+↓
+Morty models Boris as defensive
+↓
+Boris switches aggressive in final
+```
+
+That's emergent bluffing.
+
+Your history system must not inadvertently leak private future strategy.
+
+---
+
+### 16. Information-gathering actions
+
+We discussed sacrificial/probing rounds.
+
+That deserves explicit support.
+
+Not a special “probe” action necessarily.
+
+Rather the payoff structure should allow:
+
+```text
+short-term loss
+in exchange for
+information gain
+```
+
+Then analysis can identify it afterward.
+
+Potential metric:
+
+```text
+expected_information_gain
+```
+
+You could literally measure posterior reduction in opponent-policy uncertainty.
+
+That is sick.
+
+---
+
+### 17. Meta analysis
+
+You need more than Elo.
+
+Mechanisms:
+
+```text
+head-to-head matrix
+policy archetype clustering
+counter relation
+meta share
+best response
+exploitability proxy
+Alpha-Rank
+PSRO population
+```
+
+Then canonical events like:
+
+```text
+META_SHIFT
+COUNTER_DISCOVERED
+DOMINANT_STRATEGY_COLLAPSED
+```
+
+can emerge.
+
+---
+
+### 18. Season rules
+
+Under-specced.
+
+Need to decide:
+
+```text
+How often can bodies change?
+How often can policies change?
+Can ability sets change?
+Can agents train on current-season matches?
+When are patches allowed?
+What happens to old engine versions?
+```
+
+I like:
+
+```text
+SEASON
+rules frozen
+
+MATCH TO MATCH
+policy evolution allowed
+
+BODY
+minor tuning window
+
+OFF-SEASON
+major body evolution + ruleset changes
+```
+
+This makes eras meaningful.
+
+---
+
+### 19. League economy / resource constraints
+
+Even if there's no money economy, competitors need scarce resources or trade-offs.
+
+Could be:
+
+```text
+design budget
+ability slots
+body mass
+energy capacity
+actuator power
+computation budget
+```
+
+This prevents trivial optimization.
+
+---
+
+### 20. Engine patching
+
+Extremely important for a persistent sport.
+
+Suppose v1.4 changes collision friction.
+
+Historical match:
+
+```text
+RB-S01-M027
+```
+
+must remain:
+
+```text
+engine_version = 1.3
+```
+
+Replay it using 1.3.
+
+New matches use 1.4.
+
+Never “fix” history.
+
+This needs a compatibility/versioning mechanism.
+
+---
+
+### 21. Canon reducers
+
+You have events, but you need formal reducers:
+
+```text
+MATCH_ENDED
+→ win/loss updated
+
+POLICY_VERSION_CREATED
+→ agent current_policy pointer
+
+DAIMON_MANIFESTED
+→ daimon canonical state
+
+SIGNATURE_CONFIRMED
+→ signature history
+
+RIVALRY_CHANGED
+→ relationship state
+```
+
+The current state should be derivable from event history.
+
+That's a big architecture improvement.
+
+---
+
+### 22. Rivalries/relationships
+
+This should not just be LLM storytelling.
+
+Measure:
+
+```text
+match frequency
+upsets
+close matches
+counter relationship
+adaptation targeted at opponent
+history length
+stakes
+```
+
+Then:
+
+```text
+rivalry_score
+```
+
+can produce a canonical relationship.
+
+LLM can name/dramatize it later.
+
+---
+
+### 23. Significance detection
+
+For content:
+
+```text
+upset
+record
+new signature
+new daimon
+meta shift
+first counter
+long streak broken
+sacrificial strategy discovered
+reverse sweep
+mechanically disadvantaged victory
+```
+
+These should be deterministic detectors first.
+
+Then the story model interprets them.
+
+---
+
+### 24. Raw replay format
+
+Needs a formal protocol.
+
+Something like:
+
+```text
+RBZ Replay v1
+
+header
+engine_version
+ruleset
+seed
+arena
+body manifests
+policy commitments
+
+rounds
+  frames
+  actions
+  events
+
+result
+digest
+```
+
+And ideally a binary/compressed representation eventually.
+
+---
+
+### 25. Spectator reveal levels
+
+This is actually a product/game mechanic.
+
+During match:
+
+```text
+show action?
+show policy?
+show opponent model?
+```
+
+Probably:
+
+```text
+LIVE
+telemetry only
+
+POST-MATCH
+policy reveal
+
+ANALYSIS
+selected internal predictions / strategy rationale
+```
+
+This creates drama.
+
+You don't want the audience seeing the entire strategy tree before it executes.
+
+---
+
+## The spec template itself
+
+Every mechanism doc should use one rigid template:
+
+```text
+# Mechanism: POLICY COMMIT / REVEAL
+
+## Purpose
+Why the mechanism exists.
+
+## Canonical status
+GAMEPLAY / ANALYTICS / NARRATIVE
+
+## Inputs
+Exact input objects.
+
+## State
+Persistent and ephemeral state.
+
+## Transition
+Formal sequence.
+
+## Outputs
+Objects/events emitted.
+
+## Invariants
+Things that can never be violated.
+
+## Information visibility
+Who can see what and when.
+
+## Determinism
+How RNG/time is handled.
+
+## Failure modes
+Timeout, invalid action, corrupted state, etc.
+
+## Edge cases
+Tie, double KO, disconnected policy...
+
+## Telemetry
+Metrics emitted.
+
+## Versioning
+What increments version.
+
+## Security
+Sandbox implications.
+
+## Tests
+Required unit/property/fuzz tests.
+
+## Examples
+At least one normal and one adversarial example.
+
+## Non-goals
+What this mechanism does NOT establish.
+```
+
+That forces out ambiguity.
+
+# The first 15 docs I would write
+
+If you want maximum leverage, I'd spec these before adding much more code:
+
+```text
+01. MATCH-LIFECYCLE.md
+02. INFORMATION-MODEL.md
+03. MECHANICAL-BASELINE.md
+04. POLICY-COMMIT-REVEAL.md
+05. POLICY-RUNTIME.md
+06. ROUND-ADAPTATION.md
+07. BODY-DESIGN-SPACE.md
+08. BODY-EVOLUTION.md
+09. ABILITY-SYSTEM.md
+10. OPPONENT-MODEL.md
+11. POSTMATCH-LEARNING.md
+12. DAIMON-EMERGENCE.md
+13. SIGNATURE-MOVES.md
+14. META-EVOLUTION.md
+15. CANON-EVENT-REDUCERS.md
+```
+
+If those fifteen are rigorous, **90% of the “what actually is RoboBladez?” ambiguity disappears**.
+
+The old docs already contain unusually good seeds for #1, #3, #4, #6, #9, #10, #12 and #13. What they're missing is formal state transitions, visibility rules, invariants, determinism, edge cases, and tests. That is the next document layer I would build before letting agents substantially expand the codebase.

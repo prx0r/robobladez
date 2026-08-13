@@ -29,8 +29,16 @@ from .mechanical import MechanicalMatchupReport, mechanical_report
 from .model import ArenaSpec, BladeSpec
 from .policy import Policy, commitment
 from .replay import save_match
+from .signatures import SignatureDetector
 from .evolution import evolve_agent
 from .zoo import POLICY_ZOO
+
+
+def _has_signature(match, blade_id: str) -> bool:
+    """True if the detector finds a recurring winning window for this blade."""
+    det = SignatureDetector(window=5, min_occurrences=1)
+    det.register(match, blade_id)
+    return bool(det.signatures())
 
 
 class Strategist(Protocol):
@@ -143,10 +151,15 @@ def run_battle(agent_a: AgentState, spec_a: BladeSpec,
                       pa, pb, strategic_rounds)
 
     analysis = analyze_behavior(match)
+    # Detect recurring winning patterns to feed daimon emergence (rm6).
+    sig_a = _has_signature(match, spec_a.id)
+    sig_b = _has_signature(match, spec_b.id)
     refl_a = evolve_agent(agent_a, match, spec_a.id, spec_b.id, agent_b,
-                          analysis[spec_a.id]["daimon_projection"]["affinities"])
+                          analysis[spec_a.id]["daimon_projection"]["affinities"],
+                          has_signature=sig_a, salient=bool(match.winner))
     refl_b = evolve_agent(agent_b, match, spec_b.id, spec_a.id, agent_a,
-                          analysis[spec_b.id]["daimon_projection"]["affinities"])
+                          analysis[spec_b.id]["daimon_projection"]["affinities"],
+                          has_signature=sig_b, salient=bool(match.winner))
 
     if out_dir:
         from pathlib import Path

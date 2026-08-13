@@ -4,6 +4,38 @@ Distilled from the highest-signal source material (`complete gameplay and projec
 `robobladez thesis.txt`, `overview_robobladez.txt`, `actually good blades.txt`). These are the *reasons* the
 v2+ protocol exists. They are design law, not implementation detail.
 
+## The five actors (rm6)
+
+Human, Agent, Daimon, Talisman (Body), and Battle Avatar are DIFFERENT objects and must never
+be collapsed into one:
+
+```text
+HUMAN            owner / founder / mentor / coach (not joystick operator)
+AGENT            persistent AI competitor (survives season to season)
+DAIMON           emergent persistent AI companion (arises from lived history)
+TALISMAN (Body)  physical substrate (can change; Agent remains Agent)
+BATTLE AVATAR    match-specific compiled strategy policy (sealed)
+```
+
+Key rules:
+- **Human** creates the genesis, then mentors/proposes/negotiates — but cannot secretly
+  overwrite the competitor. No joystick, no buttons, no mid-battle prompts.
+- **Agent** is Boris, not `CounterPolicy()`. Its state: identity, genesis, memory, career,
+  beliefs, opponent models, relationships, goals, body history, policy lineage, daimon
+  relationship.
+- **Daimon** is a literal persistent companion that does NOT exist fully at genesis: it
+  coheres from measured behavior and, upon MANIFEST, becomes a second distinct perspective
+  (advisor/mirror/counterweight) that may disagree with the Agent. It is a two-layer object:
+  grounded ANALYTICS state + downstream NARRATIVE intelligence.
+- **Battle Avatar** is the compiled strategic intention (policy + utility weights +
+  contingencies + adaptation rules). The persistent Agent is NOT queried by an LLM every tick;
+  the avatar is fast control (Observation → policy → Action).
+
+This gives a triangular relationship (Human—Agent—Daimon) where three intelligences coexist,
+and where "Battles don't just involve characters; battles CREATE the characters." Implemented in
+`src/robobladez/agent.py` (`AgentState`, `DaimonState`, `HumanInteractionEvent`) and
+`src/robobladez/battle.py` (`BattleAvatar`).
+
 ## The four core ideas
 
 ### 1. Mechanical reveal → sealed strategic response
